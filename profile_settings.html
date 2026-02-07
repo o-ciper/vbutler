@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html data-bs-theme="dark" lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link href="css/video-js.min.css" rel="stylesheet">
+    <!-- <link rel="stylesheet" href="css/normalize.css"> -->
+    <link rel="stylesheet" href="css/bootstrap.min.css">
+    <link rel="stylesheet" href="css/videojs-mobile-ui.css">
+    <script src="js/video.min.js" defer></script>
+    <script src="js/videojs-mobile-ui.min.js" defer></script>
+    <script src="js/bootstrap.bundle.min.js" defer></script>
+    <script src="js/index.js" defer></script>
+</head>
+
+<body>
+    <dialog class="profile-settings-panel" id="profile-settings-panel">
+        <h3 class="settings-header">Profil Ayarları</h3>
+        <hr>
+        <div class="menu-buttons">
+            <button type="button" class="btn btn-secondary btn-sm close-btn">Kapat</button>
+            <button type="button" class="btn btn-primary btn-sm back-btn settings-btn" id="close-profile-settings-btn">
+                <svg width="16" height="16" viewBox="0 0 24 26" fill="none" stroke="#ccc" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="arcs" data-darkreader-inline-stroke=""
+                    style="--darkreader-inline-stroke: var(--darkreader-text-cccccc, #d1cdc7);">
+                    <path d="M15 18l-6-6 6-6"></path>
+                </svg>
+                Geri
+            </button>
+        </div>
+        <form class="profile-settings-form" method="dialog">
+            <div class="profile-settings-container">
+                <fieldset class="add-profile-section border px-3">
+                    <legend class="float-none w-auto px-1 fs-8 text-muted">Profil Ekle</legend>
+                    <div class="input-group input-group-sm mb-1">
+                        <input type="text" class="form-control form-control-sm" id="profile-name-input"
+                            name="profile-name" placeholder="Profil adını giriniz" />
+                        <button type="button" class="btn btn-success btn-sm settings-btn" id="add-profile-btn">Profil
+                            Ekle</button>
+                    </div>
+                </fieldset>
+                <fieldset class="remove-profile-section border px-3">
+                    <legend class="float-none w-auto px-1 fs-8 text-muted">Profil Sil</legend>
+                    <ul id="profile-list-container">
+                        <li>
+                            <input class="form-check-input" type="checkbox" id="no-profile" name="profile"
+                                value="select-all" />
+                            <label class="form-check-label" for="no-profile">Tümünü seç</label>
+                        </li>
+                        <!-- Actual profile items will be dynamically added here -->
+                    </ul>
+                    <div class="form-group" id="remove-profile-buttons-container">
+                        <button type="button" class="btn btn-danger btn-sm settings-btn"
+                            id="remove-profile-btn">Seçileni Sil</button>
+                        <button type="button" class="btn btn-danger btn-sm settings-btn"
+                            id="remove-all-profiles-btn">Tümünü Sil</button>
+                    </div>
+                </fieldset>
+            </div>
+            <!-- <button class="btn-close settings-btn close-settings-btn" id="profile-settings-panel-close-settings-btn" aria-label="Close"></button> -->
+        </form>
+    </dialog>
+</body>
+
+</html>

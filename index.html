@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html data-bs-theme="dark" lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link href="css/video-js.min.css" rel="stylesheet">
+    <!-- <link rel="stylesheet" href="css/normalize.css"> -->
+     <link rel="stylesheet" href="css/bootstrap.min.css">
+    <link rel="stylesheet" href="css/videojs-mobile-ui.css">
+    <script src="js/video.min.js" defer></script>
+    <script src="js/videojs-mobile-ui.min.js" defer></script>
+    <script src="js/bootstrap.bundle.min.js" defer></script>
+    <script src="js/index.js" defer></script>
+  </head>
+  <body>
+    
+    <button type="button" id="settings-button"></button>
+    <button type="button" id="show-the-button"></button>
+    <!-- <img id="settings-btn" width="28ch" src="./img/settings-white.svg" alt="Settings" /> -->
+    <dialog id="settings-panel-container">
+      <div class="dialog-inner">
+        <button type="button" class="btn-close settings-btn close-settings-btn" id="settings-panel-close-settings-btn" aria-label="Close"></button>
+      
+        <ul class="nav nav-tabs" id="settingsTab" role="tablist">
+          <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="video-settings-panel-tab-btn" data-bs-toggle="tab" data-bs-target="#video-settings-panel" type="button" role="tab" aria-controls="video-settings-panel" aria-selected="true">Video Ayarları</button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link" id="profile-settings-panel-tab-btn" data-bs-toggle="tab" data-bs-target="#profile-settings-panel" type="button" role="tab" aria-controls="profile-settings-panel" aria-selected="false">Profil Ayarları</button>
+          </li>
+        </ul>
+        <div class="tab-content" id="settingsTabContent">
+          <div class="tab-pane fade active show settings-panel" id="video-settings-panel" role="tabpanel" aria-labelledby="video-settings-panel-tab">
+            <form class="settings-form">
+              <div class="select-source-group">
+                <label for="profile-select">Profil Seç:</label>
+                <select
+                  class="form-select"
+                  name="profile-select"
+                  id="profile-select"
+                  aria-label="Select a profile"
+                >
+                </select>
+              </div>
+              <div class="select-source-group">
+                <label for="video-count-selector">Video Sayısı:</label>
+                <select 
+                  class="form-select"
+                  name="video-count-selector"
+                  id="video-count-selector"
+                  aria-label="Select a video count"
+                >
+                </select>
+              </div>
+            </form>
+            <div class="source-selectors-container" id="source-selectors-container">
+              <p class="info-text">⚠️ Video ve resimler tarayıcı depolama alanına kopyalanır. Tarayıcı verileri temizlendiğinde kaynaklar da silinir.</p>
+              <span id="opfs-disk-usage"></span>
+              <section class="source-selector-section" id="source-selector-section">
+                <!-- Video source selectors will be dynamically added here -->
+                
+              </section>
+            </div>
+          </div>
+
+          <div class="tab-pane fade settings-panel" id="profile-settings-panel" role="tabpanel" aria-labelledby="profile-settings-panel-tab">
+            <form class="profile-settings-form">
+              <div class="profile-settings-container">
+                <fieldset class="add-profile-section border px-3">
+                  <legend class="float-none w-auto px-1 fs-8 text-muted">Profil Ekle</legend>
+                  <div class="input-group input-group-sm mb-1">
+                    <input
+                      type="text"
+                      class="form-control form-control-sm"
+                      id="profile-name-input"
+                      name="profile-name"
+                      placeholder="Profil adını giriniz" 
+                    />
+                    <button type="button" class="btn btn-success btn-sm" id="add-profile-btn">Profil Ekle</button>
+                  </div>
+                </fieldset>
+                <fieldset class="remove-profile-section border px-3">
+                  <legend class="float-none w-auto px-1 fs-8 text-muted">Profil Sil</legend>
+                    <ul id="profile-list-container">
+                        <li>
+                          <input class="form-check-input" type="checkbox" id="no-profile" name="profile" value="select-all" />
+                          <label class="form-check-label" for="no-profile">Tümünü seç</label>
+                        </li>
+                        <!-- Actual profile items will be dynamically added here -->
+                    </ul>
+                  <div class="form-group" id="remove-profile-buttons-container">
+                    <button type="button" class="btn btn-danger btn-sm settings-btn" id="remove-profile-btn">Seçileni Sil</button>
+                    <button type="button" class="btn btn-danger btn-sm settings-btn" id="remove-all-profiles-btn">Tümünü Sil</button>
+                  </div>
+                </fieldset>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </dialog>
+    <main>
+
+      <section class="video-list-grid" id="video-players">
+      </section>
+      
+      <video
+        id="vp"
+        class="video-js"
+      >
+        <p class="vjs-no-js vjs-fluid">
+          To view this video please enable JavaScript, and consider upgrading to a
+          web browser that
+          <a href="https://videojs.com/html5-video-support/" target="_blank">
+            supports HTML5 video
+          </a>
+        </p>
+
+      </video>
+
+      
+    </main>
+  </body>
+</html>

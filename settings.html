@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html data-bs-theme="dark" lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link href="css/video-js.min.css" rel="stylesheet">
+    <!-- <link rel="stylesheet" href="css/normalize.css"> -->
+     <link rel="stylesheet" href="css/bootstrap.min.css">
+    <link rel="stylesheet" href="css/videojs-mobile-ui.css">
+    <script src="js/video.min.js" defer></script>
+    <script src="js/videojs-mobile-ui.min.js" defer></script>
+    <script src="js/bootstrap.bundle.min.js" defer></script>
+    <script src="js/index.js" defer></script>
+  </head>
+  <body>
+    <dialog class="settings-panel" id="settings-panel">
+      <h3 class="settings-header">Video Ayarları</h3>
+      <hr>
+      <div class="menu-buttons">
+        <button type="button" class="btn btn-secondary btn-sm close-btn">Kapat</button>
+        <button type="button" class="btn btn-primary btn-sm settings-btn" id="profile-settings-btn">Profil Ayarları</button>
+      </div>
+      <form class="settings-form" method="dialog">
+        <div class="select-source-group">
+          <label for="profile-select">Profil Seç:</label>
+          <select
+            class="form-select"
+            name="profile-select"
+            id="profile-select"
+            aria-label="Select a profile"
+          >
+          </select>
+        </div>
+        <div class="select-source-group">
+          <label for="video-count-selector">Video Sayısı:</label>
+          <select 
+            class="form-select"
+            name="video-count-selector"
+            id="video-count-selector"
+            aria-label="Select a video count"
+          >
+          </select>
+        </div>
+        <!-- <button type="button" class="btn-close settings-btn close-settings-btn" id="settings-panel-close-settings-btn" aria-label="Close"></button> -->
+      </form>
+      <div class="source-selectors-container" id="source-selectors-container">
+        <p class="info-text">⚠️ Aşağıda seçilen kaynak bilgisi tarayıcı depolama alanında saklanır. Tarayıcı verileri temizlendiğinde kaynaklar da silinir.</p>
+        <section class="source-selector-section" id="source-selector-section">
+          <!-- Video source selectors will be dynamically added here -->
+          
+        </section>
+      </div>
+    </dialog>
+  </body>
+</html>

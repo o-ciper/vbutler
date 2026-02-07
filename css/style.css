@@ -1,0 +1,456 @@
+.selector-for-some-widget {
+  box-sizing: content-box;
+}
+
+html {
+	color-scheme: light-dark;
+	box-sizing: border-box;
+	scrollbar-color: #555 #222;
+	scrollbar-width: thin;
+}
+
+body {
+	font-family: system-ui;
+	font-size: 1.125rem;
+	line-height: 1.6;
+	background: #131313;
+	color: #ffffff;
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	align-items: center;
+	width: 100dvw;
+	height: 100dvh;
+}
+
+main {
+	/* width: min(185ch, 100% - 2rem); */
+	margin-inline: auto;
+}
+
+.video-list-grid {
+	display: grid;
+	align-items: center;
+	justify-items: center;
+	width: 100dvw;
+	height: 100dvh;
+}
+
+.video-list-grid > .video-list-item {
+	aspect-ratio: 16 / 9;
+	background: #222;
+	max-width: 95vw;
+	max-height: 95vh;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	color: #aaa8a8;
+	font-size: min(1rem, 5cqw, 6cqh);
+	text-align: center;
+	position: relative;
+	border: 1px solid #444;
+	border-radius: 8px;
+}
+
+.video-list-grid > .video-list-item:hover {
+	border-color: #3a3939;
+	box-shadow: 0 0 2px #666;
+	cursor: pointer;
+}
+
+/* Layout patterns for count */
+.video-list-grid.count-1 {
+  grid-template-columns: 1fr;
+}
+
+.video-list-grid.count-2 {
+  grid-template-columns: 1fr;
+  grid-auto-rows: repeat(2, 1fr);
+}
+
+.video-list-grid.count-4 {
+  grid-template-columns: 1fr;
+  grid-template-rows: repeat(4, 1fr);
+}
+
+/* Ensure 16:9 fits nicely even on landscape displays */
+@media (orientation: landscape) {
+	.video-list-grid.count-1 {
+		grid-template-columns: 1fr;
+	}
+
+	.video-list-grid.count-2 {
+		grid-template-columns: repeat(2, 1fr);
+		grid-template-rows:  1fr;
+	}
+
+	.video-list-grid.count-4 {
+		grid-template-columns: repeat(2, 1fr);	
+		grid-template-rows: repeat(2, 1fr);
+	}
+}
+
+.thumbnail {
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+	border-radius: 8px;
+	transition: transform 0.3s ease;
+}
+
+.video-title-overlay {
+	position: absolute;
+	bottom: 0;
+	left: 0;
+	width: 100%;
+	background: rgba(0, 0, 0, 0.6);
+	color: #fff;
+	padding: 4px 8px;
+	font-size: max(1rem, 1.5cqw, 2.5cqh);
+	text-align: center;
+	box-sizing: border-box;
+	border-bottom-left-radius: 8px;
+	border-bottom-right-radius: 8px;
+}
+
+#no-videos {
+	text-align: center;
+	font-size: min(1rem, 4cqw, cqh);
+	color: #a2a2a2;
+	margin: 0;
+	padding: 0;
+}
+
+label {
+	padding: 4px 6px;
+	border-radius: 4px;
+	font-size: .9rem;
+}
+
+video {
+	width: 100%;
+}
+
+#vp {
+	border: none;
+	outline: none;
+	display: none;
+	z-index: 998;
+}
+
+#vp:focus {
+	outline: none;
+	border: none;
+}
+
+#settingsTab {
+	border-bottom: none;
+	background: #201e1e;
+}
+
+#settingsTabContent {
+	width: 100%;
+	height: 100%;
+	background-color: #222;
+	border-bottom-left-radius: 8px;
+	border-bottom-right-radius: 8px;
+}
+
+#profile-settings-panel-tab-btn,
+#video-settings-panel-tab-btn {
+	padding: 6px 10px;
+	margin: 0;
+	font-size: .9rem;
+	border-top-left-radius: 8px;
+}
+
+#profile-settings-panel-tab-btn.active,
+#video-settings-panel-tab-btn.active {
+	background-color: #222;
+}
+
+#settings-panel-container {
+	width: 100vw;
+	height: 100vh;
+	border: none;
+	position: fixed;
+	inset: 0;
+	padding: 0;
+	background: transparent;
+}
+
+#settings-panel-container:modal,
+/* use dialog[open] as more-compatible selector for open state */
+#settings-panel-container[open] {
+	/* any open-only styles here */
+	user-select: none;
+	min-width: min(100dvw, 1920px);
+	min-height: min(100dvh, 1080px);
+	border: 1px solid #444;
+	border-radius: 8px;
+	transition: all .1s ease-in-out;
+	color:#bcbbbb;
+	scrollbar-color: #555 #222;
+	scrollbar-width: thin;
+}
+
+#settings-panel-container::backdrop {
+	background: rgba(49, 49, 50, 0.706);
+}
+
+/* center the inner element */
+.dialog-inner {
+	width: 100%;
+	height: 100%;
+	margin: auto;               /* centers in the dialog container */
+	display: flex;
+	flex-direction: column;
+	position: relative;         /* so absolute children (close btn) are relative here */
+	align-items: stretch;
+	justify-content: center;
+	border-radius: 8px;
+}
+
+.settings-panel {
+	width: 100%;
+	height: 100%;
+	border-top: none;
+	padding: 8px 12px 12px;
+	transition: all .1s ease-in-out;
+	color:#bcbbbb;
+	scrollbar-color: #555 #222;
+	scrollbar-width: thin;
+	width: 100%;
+	background: #222;
+	overflow: auto;
+	border-bottom-left-radius: 8px;
+	border-bottom-right-radius: 8px;
+}
+
+#opfs-disk-usage {
+	font-size: .8rem;
+}
+
+#settings-button {
+	background: url('../img/settings-white.svg');
+	background-size:cover;
+	border: none;
+	border-radius: 100%;
+	cursor: pointer;
+	width: 4ch;
+	height: 4ch;
+	position: fixed;
+	display: none;
+	top: 1px;
+	left: 1px;
+	z-index: 10001;
+}
+
+#show-the-button {
+	border: none;
+	cursor: pointer;
+	width: 4ch;
+	height: 4ch;
+	position: fixed;
+	opacity: 0;
+	top: 1px;
+	left: 1px;
+	z-index: 999;
+}
+
+
+.info-text {
+	margin: 8px 0px 0px;
+	font-size: 0.8rem;
+	color: #bda50b;
+	padding: 0;
+}
+
+.select-source-group {
+	margin-bottom: 12px;
+}
+
+.table-container {
+	border: 1px solid #3e3e3e;
+	border-radius: 8px;
+	padding: 0px;
+}
+
+#source-selectors-table {
+  	background-color: transparent !important;
+}
+
+#source-selector-section {
+	margin-top: 4px;
+	border: 1px solid #444;
+	border-radius: 8px;
+	padding: 4px 8px 4px;
+}
+
+.source-selection-row {
+	width: 100%;
+	display: flex;
+	align-items: center;
+	margin: 12px 0px;
+	padding: 0px 4px;
+}
+
+.source-selector-forms {
+	display: flex;
+	justify-content: space-around;
+	width: 100%;
+}
+
+.form-header {
+	display: flex;
+	align-items: center;
+}
+
+#source-selection-header-row {
+	border-bottom: .5px solid #555;
+	padding-bottom: 2px;
+	margin-bottom: 8px;
+	margin-top: 4px;
+}
+
+.row-number {
+	width: 2ch;
+	text-align: center;
+	margin-right: 2px;
+}
+
+.upload-input {
+	display: none;
+}
+
+.upload-input-label {
+	display: inline-block;
+	padding: 2px 6px;
+	border: 1px solid #666;
+	border-radius: 4px;
+	background-color: #555;
+	color: #eee;
+	cursor: pointer;
+	margin-right: 6px;
+	
+}
+
+.present-or-absent {
+	font-size: .8rem;
+	margin-left: 0px;
+}
+
+.upload-input-label:hover {
+	opacity: 0.8;
+	border: .5px solid #777;
+	box-shadow: 0 0 1px #777;
+}
+
+.upload-input-label:active {
+	opacity: 0.7;
+	border: .5px solid #777;
+	box-shadow: 0 0 2px #aaa;
+}
+
+.close-settings-btn {
+	position: absolute;
+	top: 6px;
+	right: 8px;
+	margin-left: 18px;
+	z-index: 101;
+}
+
+#profile-settings-panel fieldset {
+	border: 1px solid #444;
+	border-radius: 8px;
+	margin-bottom: 10px;
+	padding: 0px 4px 10px;
+}
+
+#profile-settings-panel legend {
+	font-size: .9rem;
+	padding: 0 4px;
+}
+
+
+#profile-list-container {
+	max-height: max(60vh, 250px);
+	overflow-y: auto;
+	margin: 0 0 4px 0;
+	border-radius: 4px;
+	padding: 0px 0px;
+	scrollbar-color: #555 #222;
+	scrollbar-width: thin;
+}
+
+#profile-list-container li {
+	list-style: none;
+	margin-bottom: 6px;
+	padding: 2px 8px;
+	border: 1px solid #444;
+	border-radius: 4px;
+	background-color: #333;
+	display: flex;
+	align-items: center;
+}
+
+#profile-list-container li input[type="checkbox"] {
+	margin-top: 0px;
+	cursor: pointer;
+}
+
+#profile-list-container li label {
+	display: inline-block;
+	width: 100%;
+	cursor: pointer;
+}
+
+select::picker(select) {
+	border-bottom-left-radius: 8px;
+	border-bottom-right-radius: 8px;
+}
+
+#remove-profiles-alert,
+#remove-all-profiles-alert {
+	padding: 2px 8px;
+	margin-top: 2px;
+	margin-bottom: 5px;
+	transition: all 1s ease-in-out;
+}
+
+.close-btn {
+	margin-right: 10px;
+}
+
+#close-profile-settings-btn {
+	cursor: pointer;
+	/* padding-right: 18px; */
+}
+
+#close-profile-settings-btn svg {
+	height: 1rem;
+}
+
+/* Extra small devices (phones, 600px and down) */
+@media only screen and (max-width: 600px) {
+}
+
+@media only screen and (max-width: 600px) and (orientation: landscape) {
+}
+
+
+/* Small devices (portrait tablets and large phones, 600px and up) */
+@media only screen and (min-width: 600px) {
+}
+
+/* Medium devices (landscape tablets, 768px and up) */
+@media only screen and (min-width: 768px) {
+} 
+
+/* Large devices (laptops/desktops, 992px and up) */
+@media only screen and (min-width: 992px) {
+}
+
+/* Extra large devices (large laptops and desktops, 1200px and up) */
+@media only screen and (min-width: 1200px) {
+}
