@@ -30,12 +30,14 @@ const OPFSDiskUsage = document.getElementById("opfs-disk-usage");
 
 let vp; // Video.js player instance
 
-const checkedEmoji = "✅";
-const uncheckedEmoji = "❌";
-const checkmarkEmoji = "✔️";
-const lightCheckmarkEmoji = "✔️";
-const absentEmoji = "❎";
-const presentEmoji = "✅";	
+const emojiMap = {
+	checked: "✅",
+	unchecked: "❌",
+	checkmark: "✔️",
+	lightCheckmark: "✔️",
+	absent: "❎",
+	present: "✅",
+};
 
 // Video Upload Elements
 const videoUploadInputs = document.querySelectorAll(".video_upload_input");
@@ -63,6 +65,7 @@ const state = {
 							title: "",
 							src: "",
 							poster: "",
+							posterTitle: "",
 							alt: "",
 							currentTime: 0,
 						}
@@ -76,6 +79,9 @@ const state = {
 		JSON.parse(localStorage.getItem("currentProfileId")) :
 		0,
 	currentlyPlayingVideoId: null,
+	currentVolume: localStorage.getItem("currentVolume") ? 
+		JSON.parse(localStorage.getItem("currentVolume")) :
+		1,
 }
 
 /* Check for File System Access API */
@@ -86,7 +92,7 @@ const supportsOPFS = 'storage' in navigator && 'getDirectory' in navigator.stora
 // Get OPFS root handle
 let opfsRoot;
 let butlerVideosDirectoryHandle;
-(async function getOpfsRoot(){
+let opfsInitPromise = (async function getOpfsRoot(){
 	if (supportsOPFS) {
 		opfsRoot = await navigator.storage.getDirectory();
 		try {
@@ -117,7 +123,25 @@ let butlerVideosDirectoryHandle;
 					}
 				} catch (error) {
 					console.error("Could not get video handle: ", error);
-				}	
+				}
+			}
+			if (video.posterTitle !== "") {
+				console.log(`Video ${video.title} in profile ${profile.name} has a poster: ${video.poster}`);
+				try {
+					const thumbnailHandle = await opfsProfileDirectoryHandle.getFileHandle(video.posterTitle);
+					console.log(`Got thumbnail handle for ${video.title} in profile ${profile.name}: `, thumbnailHandle);
+					try {
+						const opfsThumbnailFile = await thumbnailHandle.getFile();
+						video.poster = URL.createObjectURL(opfsThumbnailFile);
+						video.posterTitle = thumbnailHandle.name;
+						console.log(video.poster);
+						console.log(`Created object URL for thumbnail of ${video.title} in profile ${profile.name}: `, video.poster);
+					} catch (err) {
+						console.error("Could not create object URL from thumbnail handle:", err);
+					}
+				} catch (error) {
+					console.error("Could not get thumbnail handle: ", error);
+				}
 			}
 		}
 	}
@@ -125,11 +149,19 @@ let butlerVideosDirectoryHandle;
 
 async function cacheVideoFileToOPFS(e) {
     const blobData = e.target.files[0];
+	const thumbnailBlobData = await generateThumbnail(URL.createObjectURL(blobData)).then(thumbnailUrl => {
+		return fetch(thumbnailUrl).then(res => res.blob());	
+	}).catch(err => {
+		console.error("Error generating thumbnail blob: ", err);
+		return null;
+	});
     // Create or open a file in the OPFS
     const fileHandle = await root.getFileHandle(blobData.name, { create: true });
+	const thumbnailFileHandle = await root.getFileHandle(`thumbnail_${blobData.name}.jpg`, { create: true });
 
     // state.fileHandle = fileHandle;
     state.fileName = blobData.name;
+	state.thumbnailFileName = `thumbnail_${blobData.name}.jpg`;
     saveState();
 
     if (!blobData || !validVideoFileType(blobData)) {
@@ -138,21 +170,35 @@ async function cacheVideoFileToOPFS(e) {
     }
     // Write to it
     const writable = await fileHandle.createWritable();
-    await writable.write(blobData);
-    await writable.close();
+    if (blobData) {
+		await writable.write(blobData);
+		await writable.close();
+	}
+
+	const thumbnailWritable = await thumbnailFileHandle.createWritable();
+	if (thumbnailBlobData) {
+		await thumbnailWritable.write(thumbnailBlobData);
+		await thumbnailWritable.close();
+	}
+    
 
 	storageInfo();
 
     // Read it later
     const file = await fileHandle.getFile();
+	const thumbnailFile = await thumbnailFileHandle.getFile();
     console.log(`File read from OPFS: ${file.name}, size: ${file.size} bytes, type: ${file.type}`);
+	console.log(`Thumbnail file read from OPFS: ${thumbnailFile.name}, size: ${thumbnailFile.size} bytes, type: ${thumbnailFile.type}`);
     const url = URL.createObjectURL(file);
+	const thumbnailUrl = URL.createObjectURL(thumbnailFile);
     vp.src = url;
+	vp.poster = thumbnailUrl;
 }
 
 function saveState() {
   localStorage.setItem("profiles", JSON.stringify(state.profiles));
   localStorage.setItem("currentProfileId", state.currentProfileId);
+  localStorage.setItem("currentVolume", state.currentVolume);
 }
 
 showTheButton.addEventListener("click", () => {
@@ -181,29 +227,12 @@ settingsBtn.addEventListener("click", () => {
 	}
 });
 
-// profileSettingsBtn.addEventListener("click", () => {
-// 	videoSettingsPanel.close();
-// 	profileSettingsPanel.showModal();
-// });
-
 closeSettingsBtns.forEach(btn => {
 	btn.addEventListener("click", () => {
 		console.log("hey")
 		settingsPanelContainer.close();
 	});
 });
-
-// closeBtns.forEach(btn => {
-// 	btn.addEventListener("click", () => {
-// 		videoSettingsPanel.close();
-// 		profileSettingsPanel.close();
-// 	});
-// });
-
-// videoSettingsBtn.addEventListener("click", () => {
-// 	profileSettingsPanel.close();
-// 	videoSettingsPanel.showModal();
-// });
 
 profileNameInput.addEventListener("keydown", (e) => {
 	if (e.key === "Enter") {
@@ -243,6 +272,7 @@ addProfileBtn.addEventListener("click", async () => {
 				title: "",
 				src: "",
 				poster: "",
+				posterTitle: "",
 				alt: "",
 				currentTime: 0,
 			}
@@ -327,6 +357,9 @@ removeAllProfilesBtn.addEventListener("click", () => {
 					if (video.src !== "") {
 						URL.revokeObjectURL(video.url)
 					}
+					if (video.poster) {
+						URL.revokeObjectURL(video.poster);
+					}
 				});
 			}
 				await butlerVideosDirectoryHandle.removeEntry(profile.opfsProfileDirectoryHandle.name, { recursive: true });
@@ -340,15 +373,9 @@ removeAllProfilesBtn.addEventListener("click", () => {
 	renderSourceSelectors();
 });
 
-// videoSettingsPanel.addEventListener("close", (event) => {
-// 	console.log(`Dialog closed: ${videoSettingsPanel.returnValue}`);
-// });
-
-// profileSettingsPanel.addEventListener("close", (event) => {
-// 	videoSettingsPanel.showModal();
-// });
-
-document.addEventListener("DOMContentLoaded", () => {
+// TODO: Add settings section for player controls (like volume, autoplay, loop, etc.) and save those settings in state and apply them to the player instance
+document.addEventListener("DOMContentLoaded", async () => {
+	await opfsInitPromise;
 	storageInfo();
 	vp = videojs("vp", {
 		controls: true,
@@ -387,12 +414,18 @@ document.addEventListener("DOMContentLoaded", () => {
 		}
 	});
 
+	vp.on("volumechange", () => {
+		state.currentVolume = vp.volume();
+		localStorage.setItem("currentVolume", state.currentVolume);
+	});
+
 	vp.on('ended', () => {
 		if (document.fullscreenElement) {
 			closeFullscreen();
 		}
 		vp.pause();
 		vp.currentTime(0);
+		vp.volume(state.currentVolume);
 		document.getElementById('vp').style.display = 'none';
 	});
 
@@ -551,12 +584,19 @@ function renderSourceSelectors() {
 			if (video.src && video.src.startsWith('blob:')) {
 				URL.revokeObjectURL(video.src);
 			}
+			if (video.poster && video.poster.startsWith('blob:')) {
+				URL.revokeObjectURL(video.poster);
+			}
 			video.src = "";
 			video.title = "";
 			video.poster = "";
+			video.posterTitle = "";
+			video.alt = "";
+			video.currentTime = 0;
 		}
 		if (butlerVideosDirectoryHandle && currentProfile.opfsProfileDirectoryHandle) {
-			await butlerVideosDirectoryHandle.removeEntry(currentProfile.opfsProfileDirectoryHandle.name, { recursive: true });
+			await clearDirectoryContents(currentProfile.opfsProfileDirectoryHandle);
+			// await butlerVideosDirectoryHandle.removeEntry(currentProfile.opfsProfileDirectoryHandle.name, { recursive: true });
 			storageInfo();
 		}
 		saveState();
@@ -596,7 +636,7 @@ function renderSourceSelectors() {
 
 		const videoIndicator = document.createElement("span");
 		videoIndicator.className = "present-or-absent";
-		// videoIndicator.textContent = uncheckedEmoji;
+		// videoIndicator.textContent = emojiMap.unchecked;
 
 		const videoUploadInput = document.createElement("input");
 		videoUploadInput.type = "file";
@@ -606,23 +646,94 @@ function renderSourceSelectors() {
 		videoUploadInput.accept = "video/*";
 		videoUploadInput.style.display = "none";
 		videoUploadInput.addEventListener("change", async (e) => {
+			const videoPosterImages = document.querySelectorAll(".video-poster-img");
+			console.log(videoPosterImages);
+			if (video.src && video.src.startsWith('blob:')) {
+				URL.revokeObjectURL(video.src);
+				if (butlerVideosDirectoryHandle && currentProfile.opfsProfileDirectoryHandle && video.title) {
+					currentProfile.opfsProfileDirectoryHandle.removeEntry(video.title).then(() => {
+						storageInfo();
+					}).catch(err => {
+						console.error("Error removing old video file from OPFS: ", err);
+					});
+				}
+			}
+			if (video.poster && video.poster.startsWith('blob:')) {
+				URL.revokeObjectURL(video.poster);
+				if (butlerVideosDirectoryHandle && currentProfile.opfsProfileDirectoryHandle && video.posterTitle) {
+					currentProfile.opfsProfileDirectoryHandle.removeEntry(video.posterTitle).then(() => {
+						storageInfo();
+					}).catch(err => {
+						console.error("Error removing old poster file from OPFS: ", err);
+					});
+				}
+			}
+
 			const file = e.target.files[0];
 			if (file && validVideoFileType(file)) {
-				const fileHandle = await currentProfile.opfsProfileDirectoryHandle.getFileHandle(file.name, {create: true});
+				// Check if video file is already in opfs for this profile, if it is, return and alert the user that they have already selected this file. This is to prevent duplicates in OPFS and also to prevent unnecessary writes to OPFS which can cause performance issues.
+				const isFilePresentInOPFS = await currentProfile.opfsProfileDirectoryHandle.getFileHandle(file.name).then(() => true).catch(() => false);
+				if (isFilePresentInOPFS) {
+					// Make the alert a dialog that the user has to click "OK" on to dismiss, instead of a temporary alert that disappears after a few seconds, because the user might miss it if they are not looking at the screen when it appears. Also, make sure to not create multiple alerts if the user keeps selecting the same file.
+					if (sourceSelectorSection.querySelector("#duplicate-file-alert")) {
+						return;
+					}
+					const duplicateFileAlert = document.createElement("div");
+					duplicateFileAlert.id = "duplicate-file-alert";
+					duplicateFileAlert.className = "alert alert-warning";
+					duplicateFileAlert.role = "alert";
+					const alertText = document.createElement("p");
+					alertText.textContent = "Bu dosya zaten listede mevcut. Lütfen farklı bir dosya seçin.";
+					duplicateFileAlert.appendChild(alertText);
+					sourceSelectorSection.insertAdjacentElement("beforebegin", duplicateFileAlert);
+					const closeBtn = document.createElement("button");
+					closeBtn.className = "btn btn-sm btn-primary";
+					closeBtn.textContent = "Tamam";
+					duplicateFileAlert.appendChild(closeBtn);
+					duplicateFileAlert.style.display = "block";
+					closeBtn.addEventListener("click", () => {
+						duplicateFileAlert.style.display = "none";
+					});
+					setTimeout(() => {
+						if (sourceSelectorSection.parentElement.contains(duplicateFileAlert)) {
+							sourceSelectorSection.parentElement.removeChild(duplicateFileAlert);
+						}
+					}, 5000);
+					return;
+				}
+
+				const fileHandle = await currentProfile.opfsProfileDirectoryHandle.getFileHandle(file.name, { create: true });
+
+				const thumbnailBlobData = await generateThumbnail(URL.createObjectURL(file)).then(thumbnailUrl => {
+					return fetch(thumbnailUrl).then(res => res.blob());
+				}).catch(err => {
+					console.error("Error generating thumbnail blob: ", err);
+					return null;
+				});
+				const thumbnailFileHandle = await currentProfile.opfsProfileDirectoryHandle.getFileHandle(`thumbnail_${file.name}.jpg`, { create: true });
+				
 				// Write to it
 				const writable = await fileHandle.createWritable();
 				await writable.write(file);
 				await writable.close();
+
+				const thumbnailWritable = await thumbnailFileHandle.createWritable();
+				await thumbnailWritable.write(thumbnailBlobData);
+				await thumbnailWritable.close();
 				storageInfo();
 
 				// Read it later
 				const videoFile = await fileHandle.getFile();
 				console.log(`File read from OPFS: ${videoFile.name}, size: ${videoFile.size / (1024*1024*1024)} GB, type: ${videoFile.type}`);
+				const thumbnailFile = await thumbnailFileHandle.getFile();
+				console.log(`Thumbnail file read from OPFS: ${thumbnailFile.name}, size: ${thumbnailFile.size} bytes, type: ${thumbnailFile.type}`);
+				
 				video.src = URL.createObjectURL(videoFile);
-
 				video.title = videoFile.name;
-				videoIndicator.textContent = checkedEmoji;
-				// saveState();
+				video.poster = URL.createObjectURL(thumbnailFile);
+				video.posterTitle = thumbnailFile.name;
+				videoIndicator.textContent = emojiMap.checkmark;
+				saveState();
 				renderSourceSelectors();
 				renderVideoList();
 			} else {
@@ -633,7 +744,7 @@ function renderSourceSelectors() {
 		videoForm.appendChild(videoUploadInput);
 		videoForm.appendChild(videoLabel);
 		if (video.src && video.src !== "") {
-			videoIndicator.textContent = checkmarkEmoji;
+			videoIndicator.textContent = emojiMap.checkmark;
 		}
 		videoForm.appendChild(videoIndicator);
 
@@ -649,7 +760,7 @@ function renderSourceSelectors() {
 
 		const posterIndicator = document.createElement("span");
 		posterIndicator.className = "present-or-absent";
-		// posterIndicator.textContent = uncheckedEmoji;
+		// posterIndicator.textContent = emojiMap.unchecked;
 
 		const posterUploadInput = document.createElement("input");
 		posterUploadInput.type = "file";
@@ -663,7 +774,7 @@ function renderSourceSelectors() {
 			const file = e.target.files[0];
 			if (file && validImageFileType(file)) {
 				video.poster = URL.createObjectURL(file);
-				posterIndicator.textContent = checkedEmoji;
+				posterIndicator.textContent = emojiMap.checked;
 				saveState();
 				renderSourceSelectors();
 				renderVideoList();
@@ -677,9 +788,12 @@ function renderSourceSelectors() {
 		clearRowBtn.className = "btn btn-sm btn-warning remove-source-btn settings-btn";
 		clearRowBtn.id = `remove-source-${video.id + 1}-btn`;
 		clearRowBtn.textContent = "Sil";
-		clearRowBtn.addEventListener("click", () => {
+		clearRowBtn.addEventListener("click", async () => {
 			if (video.src && video.src.startsWith('blob:')) {
 				URL.revokeObjectURL(video.src);
+			}
+			if (video.poster && video.poster.startsWith('blob:')) {
+				URL.revokeObjectURL(video.poster);
 			}
 			if (butlerVideosDirectoryHandle && currentProfile.opfsProfileDirectoryHandle && video.title) {
 				currentProfile.opfsProfileDirectoryHandle.removeEntry(video.title).then(() => {
@@ -688,9 +802,19 @@ function renderSourceSelectors() {
 					console.error("Error removing video file from OPFS: ", err);
 				});
 			}
+			if (butlerVideosDirectoryHandle && currentProfile.opfsProfileDirectoryHandle && video.title && video.poster) {
+				currentProfile.opfsProfileDirectoryHandle.removeEntry(video.posterTitle).then(() => {
+					console.log("Thumbnail file removed from OPFS.");
+				}).catch(err => {
+					console.error("Error removing thumbnail file from OPFS: ", err);
+				});
+			}
 			video.title = "";
 			video.src = "";
 			video.poster = "";
+			video.posterTitle = "";
+			video.alt = "";
+			video.currentTime = 0;
 			saveState();
 			renderSourceSelectors();
 			renderVideoList();
@@ -700,7 +824,7 @@ function renderSourceSelectors() {
 		posterForm.appendChild(posterUploadInput);
 		posterForm.appendChild(posterLabel);
 		if (video.poster && video.poster !== "") {
-			posterIndicator.textContent = checkmarkEmoji;
+			posterIndicator.textContent = emojiMap.checkmark;
 		}
 		posterForm.appendChild(posterIndicator);
 		
@@ -711,7 +835,13 @@ function renderSourceSelectors() {
 		row.appendChild(forms);
 		row.appendChild(clearRowBtn);
 
+		const videoTitle = document.createElement("div");
+		videoTitle.className = "video-title";
+		videoTitle.textContent = `${video.title}` || "";
+		videoTitle.style.marginLeft = "3vw";
+		
 		sourceSelectorSection.appendChild(row);
+		sourceSelectorSection.appendChild(videoTitle);
 	}
 }
 
@@ -723,6 +853,7 @@ function createDefaultVideoList() {
 			title: "",
 			src: "",
 			poster: "",
+			posterTitle: "",
 			alt: "",
 			currentTime: 0,
 		};
@@ -741,6 +872,7 @@ function updateVideoList() {
 				title: "",
 				src: "",
 				poster: "",
+				posterTitle: "",
 				alt: "",
 				currentTime: 0,
 			};
@@ -755,48 +887,7 @@ function updateVideoList() {
 
 window.addEventListener('resize', () => fitThumbnailsInViewport(state.profiles[state.currentProfileId].videoCount));
 
-// Video Player Rendering
-// Test Video Upload and Player
-// const vp = videojs("vp", {
-// 	controls: true,
-// 	fluid: true,
-// 	autoplay: false,
-// 	preload: 'auto',
-// 	loadingSpinner: true,
-// 	userActions: {
-// 		hotkeys: true,
-// 	},
-// 	controlBar: {
-// 		VolumePanel: {
-// 			inline: false
-// 		},
-//     	children: [
-// 			'PlayToggle',
-// 			'ProgressControl',
-// 			'VolumePanel',
-// 			'FullscreenToggle',
-// 		],
-//   	},
-// });
-// vp.src({ src: "../videos/ed_1024_512kb.mp4" });
-// vp.mobileUi({
-// 	fullscreen: {
-// 		enterOnRotate: true,
-// 		exitOnRotate: false,
-// 		lockOnRotate: false,
-// 		lockToLandscapeOnEnter: false,
-// 		disabled: false
-// 	},
-// 	touchControls: {
-// 		seekSeconds: 10,
-// 		tapTimeout: 300,
-// 		disableOnEnd: false,
-// 		disabled: false,
-// 	}
-// });
-
-
-function renderVideoList() {
+async function renderVideoList() {
 	videoListGrid.innerHTML = "";
 	videoListGrid.className = `video-list-grid count-${state.profiles[state.currentProfileId].videoCount}`;
 	
@@ -807,7 +898,6 @@ function renderVideoList() {
 		img.className = "thumbnail video-poster-img";
 		img.alt = video.alt || video.title || `Video ${video.id + 1}`;
 		// img.style.objectFit = "cover";
-		// videoListItem.appendChild(img);
 		if (video.src && video.src !== "") {
 			if (video.poster && video.poster !== "") {
 				img.src = video.poster;
@@ -842,12 +932,66 @@ function renderVideoList() {
 			vp.src({ src: videoUrl, type: 'video/mp4'});
 			openFullscreen(vp);
 			state.currentlyPlayingVideoId = video.id;
+			vp.volume(state.currentVolume);
 			saveState();
 			vp.play();
 		});
 		videoListGrid.appendChild(videoListItem);
 	}
+	const videoPosterImages = document.querySelectorAll(".video-poster-img");
+	for (const [i, video] of state.profiles[state.currentProfileId].videos.entries()) {
+		if (video.src && video.src !== "") {
+			if (video.poster && video.poster !== "" && video.posterTitle) {
+				const currentProfile = state.profiles[state.currentProfileId];
+				const profileDirectoryHandle = currentProfile.opfsProfileDirectoryHandle;
+				if (!profileDirectoryHandle || typeof profileDirectoryHandle !== 'object') {
+					videoPosterImages[i].src = "./img/placeholder.svg";
+					continue;
+				}
+				const thumbnailHandle = await profileDirectoryHandle.getFileHandle(video.posterTitle);
+				if (thumbnailHandle) {
+					thumbnailHandle.getFile().then(file => {
+						const thumbnailUrl = URL.createObjectURL(file);
+						videoPosterImages[i].src = thumbnailUrl;
+						video.poster = thumbnailUrl;
+						video.posterTitle = thumbnailHandle.name;
+						console.log(`Set thumbnail for ${video.title} in profile ${currentProfile.name}: `, thumbnailUrl);
+					}).catch(err => {
+						console.error("Error loading thumbnail from OPFS: ", err);
+						videoPosterImages[i].src = "./img/placeholder.svg";
+					});
+				}
+			} else {
+				videoPosterImages[i].src = "./img/placeholder.svg";
+			}
+		}
+	}
 	fitThumbnailsInViewport(state.profiles[state.currentProfileId].videos.length);
+}
+
+function generateThumbnail(videoSrc) {
+	return new Promise((resolve, reject) => {
+		const video = document.createElement('video');
+		video.src = videoSrc;
+		video.crossOrigin = "anonymous";
+		video.addEventListener('loadeddata', () => {
+			video.currentTime = 1; // Capture thumbnail at 1 second
+		});
+		video.addEventListener('seeked', () => {
+			const canvas = document.createElement('canvas');
+			canvas.width = video.videoWidth;
+			canvas.height = video.videoHeight;
+			const ctx = canvas.getContext('2d');
+			ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+			canvas.toBlob(blob => {
+				const thumbnailUrl = URL.createObjectURL(blob);
+				resolve(thumbnailUrl);
+			}, 'image/jpeg');
+		});
+		video.addEventListener('error', (e) => {
+			reject(e);
+		});
+	});
 }
 
 function fitThumbnailsInViewport(videoCount) {
@@ -912,6 +1056,17 @@ function fitThumbnailsInViewport(videoCount) {
 	});
 }
 
+async function clearDirectoryContents(dirHandle) {
+    for await (const entry of dirHandle.values()) {
+        if (entry.kind === 'file') {
+            await dirHandle.removeEntry(entry.name);
+        } else if (entry.kind === 'directory') {
+            await clearDirectoryContents(entry); // Recursively clear contents
+            await dirHandle.removeEntry(entry.name); // Remove the subdirectory if desired
+        }
+    }
+}
+
 function isMobileDevice() {
   const vendor = navigator.userAgent || navigator.vendor || window.opera;
 
@@ -960,17 +1115,16 @@ async function openFullscreen(player) {
 		player.currentTime(
 			state.profiles[state.currentProfileId].videos[state.currentlyPlayingVideoId].currentTime || 
 			0);
+		player.volume(state.currentVolume);
 		await player.play();
 	} catch (err) {
 		console.error("Error attempting to enable fullscreen mode or playback:", err);
 	}
 
-	// TODO: Set currrentTime for each video on the state when exiting fullscreen without ending
-	// When video ends, exit fullscreen, hide the player again and reset the time
 	const cleanupVideoPlayback = () => {
 		const vpElement = document.getElementById('vp');
+		vp.volume(state.currentVolume);
 		vp.pause();
-		// Working here
 	
 		vp.currentTime(0);
 		state.profiles[state.currentProfileId].videos[state.currentlyPlayingVideoId].currentTime = 0;
@@ -986,6 +1140,7 @@ async function openFullscreen(player) {
 	const cleanup = () => {
 		const vpElement = document.getElementById('vp');
 		vp.pause();
+		state.currentVolume = vp.volume();
 		state.profiles[state.currentProfileId].videos[state.currentlyPlayingVideoId].currentTime = vp.currentTime();
 		state.currentlyPlayingVideoId = null;
 		saveState();
@@ -1028,51 +1183,6 @@ function storageInfoDebug() {
 }
 
 window.storageInfoDebug = storageInfoDebug;
-
-// const videoUploadInput = document.getElementById("video_uploads");
-// const preview = document.querySelector(".preview");
-
-// videoUploadInput.style.opacity = 0;
-
-// videoUploadInput.addEventListener("change", updateVideoDisplay);
-
-// function updateVideoDisplay() {
-// 	while (preview.firstChild) {
-// 		preview.removeChild(preview.firstChild);
-// 	}
-
-// 	const curFiles = input.files;
-// 	if (curFiles.length === 0) {
-// 		const para = document.createElement("p");
-// 		para.textContent = "No files currently selected for upload";
-// 		preview.appendChild(para);
-// 	} else {
-// 		const list = document.createElement("ol");
-// 		preview.appendChild(list);
-
-// 		for (const file of curFiles) {
-// 			const listItem = document.createElement("li");
-// 			const para = document.createElement("p");
-// 			if (validFileType(file)) {
-// 				para.textContent = `File name ${file.name}, file size ${returnFileSize(
-// 					file.size,
-// 				)}.`;
-// 				const video = document.createElement("video");
-// 				video.src = URL.createObjectURL(file);
-// 				video.alt = video.title = file.name;
-// 				video.controls = true;
-
-// 				listItem.appendChild(video);
-// 				listItem.appendChild(para);
-// 			} else {
-// 				para.textContent = `File name ${file.name}: Not a valid file type. Update your selection.`;
-// 				listItem.appendChild(para);
-// 			}
-
-// 			list.appendChild(listItem);
-// 		}
-// 	}
-// } // End video upload and player test code
 
 const videoFileTypes = [
 	"video/1d-interleaved-parityfec",
