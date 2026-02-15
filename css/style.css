@@ -34,6 +34,7 @@ main {
 	justify-items: center;
 	width: 100dvw;
 	height: 100dvh;
+	user-select: none;
 }
 
 .video-list-grid > .video-list-item {

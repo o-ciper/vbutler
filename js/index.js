@@ -90,6 +90,11 @@ const state = {
 const supportsFS = 'showOpenFilePicker' in window;
 /* Check for OPFS support */
 const supportsOPFS = 'storage' in navigator && 'getDirectory' in navigator.storage;
+console.log("File System Access API supported: ", supportsFS);
+console.log("OPFS supported: ", supportsOPFS);
+if (!supportsFS && !supportsOPFS) {
+	alert("Bu tarayıcı Dosya Sistemi Erişim API'sini ve OPFS'yi desteklemiyor. Lütfen uyumlu bir tarayıcı kullanın (örneğin, Chrome 86+).");
+}
 
 // Get OPFS root handle
 let opfsRoot;
