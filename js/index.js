@@ -812,7 +812,9 @@ function renderSourceSelectors() {
 
 		const videoIndicator = document.createElement("span");
 		videoIndicator.className = "present-or-absent";
-		const sourceIsUploadingIndicatorPath = "../img/tube-spinner-x27.svg";
+		// const sourceIsUploadingIndicatorPath = "../img/tube-spinner-x27.svg";
+		const sourceIsUploadingIndicatorPath = new URL('img/tube-spinner-x27.svg', document.baseURI).href;
+
 
 		// videoIndicator.textContent = emojiMap.unchecked;
 
@@ -852,7 +854,8 @@ function renderSourceSelectors() {
 			const videoTestElement = document.createElement('video');
 			console.log("canPlay: ", videoTestElement.canPlayType(file.type));
 			if (file && validVideoFileType(file) && videoTestElement.canPlayType(file.type)) {
-				videoIndicator.style.backgroundImage = `url(${sourceIsUploadingIndicatorPath})`;
+				videoIndicator.style.backgroundImage = `url(${sourceIsUploadingIndicatorPath})`; // This line resolves to "https://username.github.io/img/tube-spinner-x27.svg" on github pages and not to "https://username.github.io/[reponame]/img/tube-spinner-x27.svg"
+
 				// Check if video file is already in opfs for this profile, if it is, return and alert the user that they have already selected this file. This is to prevent duplicates in OPFS and also to prevent unnecessary writes to OPFS which can cause performance issues.
 				const isFilePresentInOPFS = await currentProfile.opfsProfileDirectoryHandle.getFileHandle(file.name).then(() => true).catch(() => false);
 				if (isFilePresentInOPFS) {
