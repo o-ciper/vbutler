@@ -173,7 +173,8 @@ video {
 }
 
 #profile-settings-panel-tab-btn,
-#video-settings-panel-tab-btn {
+#video-settings-panel-tab-btn,
+#video-player-settings-panel-tab-btn {
 	padding: 6px 10px;
 	margin: 0;
 	font-size: .9rem;
@@ -185,7 +186,8 @@ video {
 }
 
 #profile-settings-panel-tab-btn.active,
-#video-settings-panel-tab-btn.active {
+#video-settings-panel-tab-btn.active,
+#video-player-settings-panel-tab-btn.active {
 	background-color: #222;
 }
 
@@ -324,6 +326,11 @@ video {
 	width: 100%;
 }
 
+.source-selector-forms > form {
+	display: flex;
+	align-items: center;
+}
+
 .form-header {
 	display: flex;
 	align-items: center;
@@ -389,8 +396,16 @@ video {
 }
 
 .present-or-absent {
-	font-size: .8rem;
+	font-size: .9rem;
+	display: inline-block;
+	width: 24px;
+	height: 24px;
 	margin-left: 0px;
+	background-image: none;
+	/* background-image: url("../img/tube-spinner-x27.svg"); */
+	background-size: contain;
+	background-repeat: no-repeat;
+	background-position: center;
 }
 
 .upload-input-label:hover {
@@ -506,6 +521,7 @@ select::picker(select) {
 	z-index: 9999;
 	padding: 1rem;
 	overflow: auto;
+	word-wrap: break-word;
 }
 
 .confirm-modal-card {
@@ -571,7 +587,8 @@ select::picker(select) {
 	}
 
 	#profile-settings-panel-tab-btn,
-	#video-settings-panel-tab-btn {
+	#video-settings-panel-tab-btn,
+	#video-player-settings-panel-tab-btn {
 		padding: 8px;
 		margin: 0;
 		font-size: 0.9rem;

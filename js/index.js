@@ -90,8 +90,8 @@ const state = {
 const supportsFS = 'showOpenFilePicker' in window;
 /* Check for OPFS support */
 const supportsOPFS = 'storage' in navigator && 'getDirectory' in navigator.storage;
-console.log("File System Access API supported: ", supportsFS);
-console.log("OPFS supported: ", supportsOPFS);
+// console.log("File System Access API supported: ", supportsFS);
+// console.log("OPFS supported: ", supportsOPFS);
 if (!supportsFS && !supportsOPFS) {
 	alert("Bu tarayıcı Dosya Sistemi Erişim API'sini ve OPFS'yi desteklemiyor. Lütfen uyumlu bir tarayıcı kullanın (örneğin, Chrome 86+).");
 }
@@ -109,6 +109,7 @@ let opfsInitPromise = (async function getOpfsRoot(){
 		}
 	} else {
 		opfsRoot = null;
+		alert("Bu tarayıcı OPFS'yi desteklemiyor. Lütfen uyumlu bir tarayıcı kullanın (örneğin, Chrome 86+).");
 		console.error("OPFS is not supported in this browser!");
 		return;
 	}
@@ -117,14 +118,14 @@ let opfsInitPromise = (async function getOpfsRoot(){
 		profile.opfsProfileDirectoryHandle = opfsProfileDirectoryHandle;
 		for (video of profile.videos) {
 			if (video.title !== "") {
-				console.log(`Getting video handle for ${video.title} in profile ${profile.name}`);
+				// console.log(`Getting video handle for ${video.title} in profile ${profile.name}`);
 				try {
 					const opfsVideoHandle = await opfsProfileDirectoryHandle.getFileHandle(video.title);
-					console.log(`Got video handle for ${video.title} in profile ${profile.name}: `, opfsVideoHandle);
+					// console.log(`Got video handle for ${video.title} in profile ${profile.name}: `, opfsVideoHandle);
 					try {
 						const opfsVideoFile = await opfsVideoHandle.getFile();
 						video.src = URL.createObjectURL(opfsVideoFile);
-						console.log(`Created object URL for ${video.title} in profile ${profile.name}: `, video.src);
+						// console.log(`Created object URL for ${video.title} in profile ${profile.name}: `, video.src);
 					} catch (err) {
 						console.error("Could not create object URL from file handle:", err);
 					}
@@ -133,16 +134,16 @@ let opfsInitPromise = (async function getOpfsRoot(){
 				}
 			}
 			if (video.posterTitle !== "") {
-				console.log(`Video ${video.title} in profile ${profile.name} has a poster: ${video.poster}`);
+				// console.log(`Video ${video.title} in profile ${profile.name} has a poster: ${video.poster}`);
 				try {
 					const thumbnailHandle = await opfsProfileDirectoryHandle.getFileHandle(video.posterTitle);
-					console.log(`Got thumbnail handle for ${video.title} in profile ${profile.name}: `, thumbnailHandle);
+					// console.log(`Got thumbnail handle for ${video.title} in profile ${profile.name}: `, thumbnailHandle);
 					try {
 						const opfsThumbnailFile = await thumbnailHandle.getFile();
 						video.poster = URL.createObjectURL(opfsThumbnailFile);
 						video.posterTitle = thumbnailHandle.name;
-						console.log(video.poster);
-						console.log(`Created object URL for thumbnail of ${video.title} in profile ${profile.name}: `, video.poster);
+						// console.log(video.poster);
+						// console.log(`Created object URL for thumbnail of ${video.title} in profile ${profile.name}: `, video.poster);
 					} catch (err) {
 						console.error("Could not create object URL from thumbnail handle:", err);
 					}
@@ -194,8 +195,8 @@ async function cacheVideoFileToOPFS(e) {
     // Read it later
     const file = await fileHandle.getFile();
 	const thumbnailFile = await thumbnailFileHandle.getFile();
-    console.log(`File read from OPFS: ${file.name}, size: ${file.size} bytes, type: ${file.type}`);
-	console.log(`Thumbnail file read from OPFS: ${thumbnailFile.name}, size: ${thumbnailFile.size} bytes, type: ${thumbnailFile.type}`);
+    // console.log(`File read from OPFS: ${file.name}, size: ${file.size} bytes, type: ${file.type}`);
+	// console.log(`Thumbnail file read from OPFS: ${thumbnailFile.name}, size: ${thumbnailFile.size} bytes, type: ${thumbnailFile.type}`);
     const url = URL.createObjectURL(file);
 	const thumbnailUrl = URL.createObjectURL(thumbnailFile);
     vp.src = url;
@@ -273,7 +274,7 @@ settingsBtn.addEventListener("click", () => {
 		return;
 	} else {
 		settingsPanelContainer.showModal();
-		console.log("Modal is showed");
+		// console.log("Modal is showed");
 		settingsBtn.style.display = "none";
 		clickCount = 0;
 	}
@@ -281,7 +282,6 @@ settingsBtn.addEventListener("click", () => {
 
 closeSettingsBtns.forEach(btn => {
 	btn.addEventListener("click", () => {
-		console.log("hey")
 		settingsPanelContainer.close();
 	});
 });
@@ -304,7 +304,7 @@ addProfileBtn.addEventListener("click", async () => {
 		alertDiv.role = "alert";
 		alertDiv.id = "duplicate-profile-alert";
 		alertDiv.textContent = "Bu isimde zaten bir profil var. Lütfen farklı bir isim girin.";
-		console.log(addProfileSection);
+		// console.log(addProfileSection);
 		addProfileSection.appendChild(alertDiv);
 		setTimeout(() => {
 			if (addProfileSection.contains(alertDiv)) {
@@ -359,18 +359,38 @@ removeProfileBtn.addEventListener("click", async () => {
 		}, 3000);
 		return;
 	}
-	state.profiles
-		.filter(profile => idsToRemove.includes(profile.id))
-		.forEach(async (profile) => {
-			if (profile.videos && profile.videos.length > 0) {
-				profile.videos.forEach(video => {
-					if (video.src !== "") {
-						URL.revokeObjectURL(video.url)
-					}
-				});
+	
+	// Process profiles sequentially so we can await confirmations and act on the user's choice.
+	const profilesToCheck = state.profiles.filter(profile => idsToRemove.includes(profile.id));
+	for (const profile of profilesToCheck) {
+		if (profile.videos && profile.videos.length > 0 && profile.videos.some(video => video.src && video.src !== "")) {
+			const confirmationMessage = `
+				<strong>${profile.name}</strong> profilinde <strong>${profile.videos.filter(video => video.src && video.src !== "").length} adet video</strong> var:<br>
+				<ul>
+				${profile.videos.filter(video => video.src && video.src !== "").map(video => `<li>${video.title}</li>`).join("")}
+				</ul>
+				Bu profili silmek, bu videoların tarayıcı hafızasından kalıcı olarak silinmesine neden olacak. <strong>Bu işlem geri alınamaz.</strong><br><br>Devam etmek istediğinize emin misiniz?
+			`;
+			const confirmed = await showConfirmModal("Dikkat", confirmationMessage);
+			console.log(confirmed);
+			if (!confirmed) {
+				const idx = idsToRemove.indexOf(profile.id);
+				if (idx !== -1) idsToRemove.splice(idx, 1);
+				console.log(idsToRemove);
+				continue;
 			}
-				await butlerVideosDirectoryHandle.removeEntry(profile.opfsProfileDirectoryHandle.name, { recursive: true });
-		});
+
+			// user confirmed -> revoke object URLs and remove OPFS directory
+			for (const video of profile.videos) {
+				if (video.src && video.src !== "") URL.revokeObjectURL(video.src);
+				if (video.poster && video.poster !== "") URL.revokeObjectURL(video.poster);
+			}
+
+			if (butlerVideosDirectoryHandle && profile.opfsProfileDirectoryHandle) {
+				await butlerVideosDirectoryHandle.removeEntry(profile.opfsProfileDirectoryHandle.name, { recursive: true }).catch(() => {});
+			}
+		}
+	}
 	storageInfo();
 	state.profiles = state.profiles.filter(profile => !idsToRemove.includes(profile.id));
 	if (state.currentProfileId >= state.profiles.length) {
@@ -383,7 +403,7 @@ removeProfileBtn.addEventListener("click", async () => {
 	renderSourceSelectors()
 });
 
-removeAllProfilesBtn.addEventListener("click", () => {
+removeAllProfilesBtn.addEventListener("click", async () => {
 	if (state.profiles.length <= 1) {
 		if (profileListContainer.querySelector("#remove-all-profiles-alert")) {
 			return;
@@ -401,28 +421,43 @@ removeAllProfilesBtn.addEventListener("click", () => {
 		}, 3000);
 		return;
 	}
-	state.profiles
-		.filter(profile => profile.id !== 0 || state.profileNames[profile.id] !== "Varsayılan")
-		.forEach(async (profile) => {
-			if (profile.videos && profile.videos.length > 0) {
-				profile.videos.forEach(video => {
-					if (video.src !== "") {
-						URL.revokeObjectURL(video.url)
+
+	const confirmationMessage = `<strong>Tüm profilleri silmek istediğinize emin misiniz?</strong><br><br>Bu işlem, "Varayılan" profil hariç tüm profillerdeki videoların tarayıcı hafızasından kalıcı olarak silinmesine neden olacak. <strong>Bu işlem geri alınamaz.</strong>`;
+
+	const confirmed = await showConfirmModal("Dikkat", confirmationMessage);
+
+	if (!confirmed) {
+		return;
+	} else {
+		(async () => {
+			
+			const profilesToRemove = state.profiles.filter(profile => profile.id !== 0 || state.profileNames[profile.id] !== "Varsayılan");
+			for (const profile of profilesToRemove) {
+				if (profile.videos && profile.videos.length > 0) {
+					for (const video of profile.videos) {
+						if (video.src !== "") {
+							URL.revokeObjectURL(video.src);
+						}
+						if (video.poster) {
+							URL.revokeObjectURL(video.poster);
+						}
 					}
-					if (video.poster) {
-						URL.revokeObjectURL(video.poster);
-					}
-				});
+				}
+				if (butlerVideosDirectoryHandle && profile.opfsProfileDirectoryHandle) {
+					await butlerVideosDirectoryHandle.removeEntry(profile.opfsProfileDirectoryHandle.name, { recursive: true }).catch(() => {});
+				}
 			}
-				await butlerVideosDirectoryHandle.removeEntry(profile.opfsProfileDirectoryHandle.name, { recursive: true });
-		});
-	state.profiles = state.profiles.filter(profile => profile.id === 0 || state.profileNames[profile.id] === "Varsayılan");
-	state.currentProfileId = 0;
+		})();
+		state.profiles = state.profiles.filter(profile => profile.id === 0 || state.profileNames[profile.id] === "Varsayılan");
+		state.currentProfileId = 0;
+	}
+	
 	saveState();
 	renderProfileSelectList();
 	renderProfileList();
 	renderVideoCountSelector();
 	renderSourceSelectors();
+	renderVideoList();
 });
 
 // TODO: Add settings section for player controls (like volume, autoplay, loop, etc.) and save those settings in state and apply them to the player instance
@@ -706,6 +741,19 @@ function renderSourceSelectors() {
 	// removeAllSourcesBtn.textContent = "🗑️";
 	removeAllSourcesBtn.textContent = "Sil";
 	removeAllSourcesBtn.addEventListener("click", async () => {
+		if (currentProfile.videos.some(video => video.src && video.src !== "")) {
+			const message = `
+				<strong>${currentProfile.name}</strong> profilindeki <strong>bütün videolar</strong> tarayıcı hafızasından kalıcı olarak silinecek:<br>
+				<ul>
+					${currentProfile.videos.filter(video => video.src && video.src !== "").map(video => `<li>${video.title}</li>`).join('')}
+				</ul>
+				Bu işlem geri alınamaz.<br><br>Devam etmek istediğinize emin misiniz?
+			`;
+			const confirmed = await showConfirmModal("Dikkat", message);
+			if (!confirmed) {
+				return;
+			}
+		}
 		for (const video of currentProfile.videos) {
 			if (video.src && video.src.startsWith('blob:')) {
 				URL.revokeObjectURL(video.src);
@@ -764,6 +812,8 @@ function renderSourceSelectors() {
 
 		const videoIndicator = document.createElement("span");
 		videoIndicator.className = "present-or-absent";
+		const sourceIsUploadingIndicatorPath = "../img/tube-spinner-x27.svg";
+
 		// videoIndicator.textContent = emojiMap.unchecked;
 
 		const videoUploadInput = document.createElement("input");
@@ -776,7 +826,7 @@ function renderSourceSelectors() {
 		videoUploadInput.style.display = "none";
 		videoUploadInput.addEventListener("change", async (e) => {
 			const videoPosterImages = document.querySelectorAll(".video-poster-img");
-			console.log(videoPosterImages);
+			// console.log(videoPosterImages);
 			if (video.src && video.src.startsWith('blob:')) {
 				URL.revokeObjectURL(video.src);
 				if (butlerVideosDirectoryHandle && currentProfile.opfsProfileDirectoryHandle && video.title) {
@@ -802,6 +852,7 @@ function renderSourceSelectors() {
 			const videoTestElement = document.createElement('video');
 			console.log("canPlay: ", videoTestElement.canPlayType(file.type));
 			if (file && validVideoFileType(file) && videoTestElement.canPlayType(file.type)) {
+				videoIndicator.style.backgroundImage = `url(${sourceIsUploadingIndicatorPath})`;
 				// Check if video file is already in opfs for this profile, if it is, return and alert the user that they have already selected this file. This is to prevent duplicates in OPFS and also to prevent unnecessary writes to OPFS which can cause performance issues.
 				const isFilePresentInOPFS = await currentProfile.opfsProfileDirectoryHandle.getFileHandle(file.name).then(() => true).catch(() => false);
 				if (isFilePresentInOPFS) {
@@ -847,6 +898,7 @@ function renderSourceSelectors() {
 				const writable = await fileHandle.createWritable();
 				await writable.write(file);
 				await writable.close();
+				videoIndicator.style.backgroundImage = "none";
 
 				const thumbnailWritable = await thumbnailFileHandle.createWritable();
 				await thumbnailWritable.write(thumbnailBlobData);
@@ -855,9 +907,9 @@ function renderSourceSelectors() {
 
 				// Read it later
 				const videoFile = await fileHandle.getFile();
-				console.log(`File read from OPFS: ${videoFile.name}, size: ${videoFile.size / (1024*1024*1024)} GB, type: ${videoFile.type}`);
+				// console.log(`File read from OPFS: ${videoFile.name}, size: ${videoFile.size / (1024*1024*1024)} GB, type: ${videoFile.type}`);
 				const thumbnailFile = await thumbnailFileHandle.getFile();
-				console.log(`Thumbnail file read from OPFS: ${thumbnailFile.name}, size: ${thumbnailFile.size} bytes, type: ${thumbnailFile.type}`);
+				// console.log(`Thumbnail file read from OPFS: ${thumbnailFile.name}, size: ${thumbnailFile.size} bytes, type: ${thumbnailFile.type}`);
 				
 				video.src = URL.createObjectURL(videoFile);
 				video.title = videoFile.name;
@@ -869,7 +921,7 @@ function renderSourceSelectors() {
 			}
 			updateVideoList();
 			saveState();
-			console.log("VIDEOS ==========> ", state.profiles[state.currentProfileId].videos);
+			// console.log("VIDEOS ==========> ", state.profiles[state.currentProfileId].videos);
 			renderSourceSelectors();
 			renderVideoList();
 		});
@@ -937,7 +989,7 @@ function renderSourceSelectors() {
 			}
 			if (butlerVideosDirectoryHandle && currentProfile.opfsProfileDirectoryHandle && video.title && video.poster) {
 				currentProfile.opfsProfileDirectoryHandle.removeEntry(video.posterTitle).then(() => {
-					console.log("Thumbnail file removed from OPFS.");
+					// console.log("Thumbnail file removed from OPFS.");
 				}).catch(err => {
 					console.error("Error removing thumbnail file from OPFS: ", err);
 				});
@@ -950,7 +1002,7 @@ function renderSourceSelectors() {
 			video.currentTime = 0;
 			updateVideoList();
 			saveState();
-			console.log("VIDEOS ==========> ", state.profiles[state.currentProfileId].videos);
+			// console.log("VIDEOS ==========> ", state.profiles[state.currentProfileId].videos);
 			renderSourceSelectors();
 			renderVideoList();
 		});
@@ -1119,7 +1171,7 @@ async function renderVideoList() {
 							imgEl.style.display = '';
 							video.poster = thumbnailUrl;
 							video.posterTitle = thumbnailHandle.name;
-							console.log(`Set thumbnail for ${video.title} in profile ${currentProfile.name}: `, thumbnailUrl);
+							// console.log(`Set thumbnail for ${video.title} in profile ${currentProfile.name}: `, thumbnailUrl);
 						}).catch(err => {
 							console.error("Error loading thumbnail from OPFS: ", err);
 							imgEl.src = "./img/placeholder.svg";
@@ -1218,12 +1270,12 @@ function fitThumbnailsInViewport(videoCount) {
 	}
 
 	// debug info start
-	console.log("window.innerWidth / window.innerHeight: ", window.innerWidth / window.innerHeight);
-	console.log(`Calculated thumbnail size: ${width}x${height}`);
-	console.log(`Grid layout: ${cols} columns x ${rows} rows`);
-	console.log(`Max cell size: ${maxWidth}x${maxHeight}`);
-	console.log(isPortrait ? "Portrait orientation" : "Landscape orientation");
-	console.log(`Window size: ${vw}x${vh}`);
+	// console.log("window.innerWidth / window.innerHeight: ", window.innerWidth / window.innerHeight);
+	// console.log(`Calculated thumbnail size: ${width}x${height}`);
+	// console.log(`Grid layout: ${cols} columns x ${rows} rows`);
+	// console.log(`Max cell size: ${maxWidth}x${maxHeight}`);
+	// console.log(isPortrait ? "Portrait orientation" : "Landscape orientation");
+	// console.log(`Window size: ${vw}x${vh}`);
 	// debug info end
 
 	document.querySelectorAll('.video-list-item').forEach(el => {
@@ -1256,7 +1308,7 @@ function isMobileDevice() {
   );
 };
 
-console.log(isMobileDevice());
+// console.log(isMobileDevice());
 
 
 // pb.addEventListener("click", () => {
