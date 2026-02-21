@@ -865,46 +865,14 @@ function renderSourceSelectors() {
 		videoUploadInput.style.display = "none";
 		
 		videoUploadInput.addEventListener("change", async (e) => {
-			const activeUploads = new WeakMap();
-			document.addEventListener("click", (e) => {
-				if (e.target.matches(".videoUploadInput")) {
-					if (activeUploads.get(e.target)) {
-					e.preventDefault();
-					e.stopPropagation();
-					}
-				}
-			});
-
-			document.addEventListener("change", async (e) => {
-				if (!e.target.matches(".videoUploadInput")) return;
-
-				const input = e.target;
-
-				// If already uploading → ignore
-				if (activeUploads.get(input)) return;
-
-				try {
-					// Mark as uploading
-					activeUploads.set(input, true);
-					input.disabled = true;
-
-				} catch (err) {
-					console.error(err);
-				} finally {
-					activeUploads.delete(input);
-					input.disabled = false;
-					input.value = ""; // allow selecting same file again
-				}
-			});
-
+			const input = e.target;
+			const file = input.files ? input.files[0] : null;
 			const videoPosterImages = document.querySelectorAll(".video-poster-img");
-			// console.log(videoPosterImages);
-			const file = e.target.files[0];
+
 			const videoTestElement = document.createElement('video');
-			console.log("canPlay: ", videoTestElement.canPlayType(file.type));
 			if (!file || !validVideoFileType(file) || !videoTestElement.canPlayType(file.type)) {
-				// If the file is not a valid video type or cannot be played, show an error message and return early
 				alert("Hata: Seçilen dosya desteklenmeyen bir video türüdür, lütfen başka bir video dosyası seçin.");
+				input.value = "";
 				return;
 			}
 
@@ -931,16 +899,14 @@ function renderSourceSelectors() {
 
 			queuedOPFSOperationsCount++;
 
-			console.log("canPlay: ", videoTestElement.canPlayType(file.type));
+			videoIndicator.style.backgroundImage = `url(${sourceIsUploadingIndicatorPath})`;
 
-			videoIndicator.style.backgroundImage = `url(${sourceIsUploadingIndicatorPath})`; // This line resolves to "https://username.github.io/img/tube-spinner-x27.svg" on github pages and not to "https://username.github.io/[reponame]/img/tube-spinner-x27.svg"
-
-			// Check if video file is already in opfs for this profile, if it is, return and alert the user that they have already selected this file. This is to prevent duplicates in OPFS and also to prevent unnecessary writes to OPFS which can cause performance issues.
 			const isFilePresentInOPFS = await currentProfile.opfsProfileDirectoryHandle.getFileHandle(file.name).then(() => true).catch(() => false);
 			if (isFilePresentInOPFS) {
 				videoIndicator.style.backgroundImage = "none";
-				// Make the alert a dialog that the user has to click "OK" on to dismiss, instead of a temporary alert that disappears after a few seconds, because the user might miss it if they are not looking at the screen when it appears. Also, make sure to not create multiple alerts if the user keeps selecting the same file.
 				if (sourceSelectorSection.querySelector("#duplicate-file-alert")) {
+					input.value = "";
+					queuedOPFSOperationsCount--;
 					return;
 				}
 				const duplicateFileAlert = document.createElement("div");
@@ -964,98 +930,137 @@ function renderSourceSelectors() {
 						sourceSelectorSection.parentElement.removeChild(duplicateFileAlert);
 					}
 				}, 5000);
+				input.value = "";
 				queuedOPFSOperationsCount--;
 				return;
 			}
 
-			
+			// Disable the input and label before any long-running async operations
+			// This prevents user from re-opening file picker during thumbnail generation or OPFS copy
+			input.disabled = true;
+			videoLabel.style.pointerEvents = "none";
+			videoLabel.style.opacity = "0.5";
+			videoLabel.style.cursor = "not-allowed";
+
+			// Also disable poster upload input and fade it out
+			posterUploadInput.disabled = true;
+			posterLabel.style.pointerEvents = "none";
+			posterLabel.style.opacity = "0.5";
+			posterLabel.style.cursor = "not-allowed";
+
+			// Change clear button text to "İptal" (Cancel) during upload
+			clearRowBtn.textContent = "İptal";
+
 			let thumbnailFileHandle = null;
 			const videoUrl = URL.createObjectURL(file);
 			const thumbnailBlobData = await generateThumbnail(videoUrl).then(async thumbnailUrl => {
-				// thumbnailFileHandle = await currentProfile.opfsProfileDirectoryHandle.getFileHandle(`thumbnail_${file.name}.jpg`, { create: true });
 				return fetch(thumbnailUrl).then(res => res.blob());
 			}).catch(err => {
 				alert("Video için poster oluşturulurken bir hata oluştu. Video biçimi desteklenmiyor olabilir. Lütfen farklı bir video dosyası seçin.");
 				console.error("Error generating thumbnail blob: ", err);
 				return null;
 			});
-			
+
 			if (!thumbnailBlobData) {
-				// If thumbnail generation failed, ensure any existing thumbnail file is removed from OPFS to prevent stale thumbnails from being shown if the user later selects a valid video file that generates a thumbnail successfully.
 				if (butlerVideosDirectoryHandle && currentProfile.opfsProfileDirectoryHandle) {
-					currentProfile.opfsProfileDirectoryHandle.removeEntry(`thumbnail_${file.name}.jpg`).then(() => {
-						// console.log("Stale thumbnail file removed from OPFS.");
-					}).catch(() => {
-						// It's possible there was no existing thumbnail file, so ignore errors here.
-					});
-					currentProfile.opfsProfileDirectoryHandle.removeEntry(file.name).then(() => {
-						// console.log("Stale video file removed from OPFS.");
-					}).catch(() => {
-						// It's possible there was no existing thumbnail file, so ignore errors here.
-					});
+					currentProfile.opfsProfileDirectoryHandle.removeEntry(`thumbnail_${file.name}.jpg`).catch(() => {});
+					currentProfile.opfsProfileDirectoryHandle.removeEntry(file.name).catch(() => {});
 				}
 				videoIndicator.style.backgroundImage = "none";
 				queuedOPFSOperationsCount--;
+				// Re-enable input on error
+				input.disabled = false;
+				videoLabel.style.pointerEvents = "";
+				videoLabel.style.opacity = "";
+				videoLabel.style.cursor = "";
+				// Also re-enable poster upload
+				posterUploadInput.disabled = false;
+				posterLabel.style.pointerEvents = "";
+				posterLabel.style.opacity = "";
+				posterLabel.style.cursor = "";
+				// Restore clear button text
+				clearRowBtn.textContent = "Sil";
+				input.value = "";
 				return;
-			} else {
-				const fileHandle = await currentProfile.opfsProfileDirectoryHandle.getFileHandle(file.name, { create: true });
-
-				const uploadPromise = copyToOPFSWithCancel(file, fileHandle, controller.signal);
-				activeUploadsGlobal.set(video.id, {
-					controller,
-					promise: uploadPromise,
-					videoFileName: file.name
-				});
-				try {
-					await uploadPromise;
-					thumbnailFileHandle = await currentProfile.opfsProfileDirectoryHandle.getFileHandle(
-						`thumbnail_${file.name}.jpg`,
-						{ create: true }
-					);
-
-					const thumbnailWritable = await thumbnailFileHandle.createWritable();
-					await thumbnailWritable.write(thumbnailBlobData);
-					await thumbnailWritable.close();
-				} catch (err) {
-					if (err.name === 'AbortError') {
-						console.log('Upload cancelled');
-					} else {
-						console.error(err);
-					}
-				} finally {
-					activeUploadsGlobal.delete(video.id);
-				}
-				videoIndicator.style.backgroundImage = "none";
-
-				// const thumbnailWritable = await thumbnailFileHandle.createWritable();
-				// await thumbnailWritable.write(thumbnailBlobData);
-				// await thumbnailWritable.close();
-				
-				// Read it later
-				const videoFile = await fileHandle.getFile();
-				// console.log(`File read from OPFS: ${videoFile.name}, size: ${videoFile.size / (1024*1024*1024)} GB, type: ${videoFile.type}`);
-				
-				thumbnailFile = await thumbnailFileHandle.getFile();
-				storageInfo();
-				// console.log(`Thumbnail file read from OPFS: ${thumbnailFile.name}, size: ${thumbnailFile.size} bytes, type: ${thumbnailFile.type}`);
-				
-				video.src = URL.createObjectURL(videoFile);
-				video.title = videoFile.name;
-				if (thumbnailFile) {
-					video.poster = URL.createObjectURL(thumbnailFile);
-					video.posterTitle = thumbnailFile.name;
-					posterIndicator.textContent = emojiMap.checkmark;
-				}
-				videoIndicator.textContent = emojiMap.checkmark;
 			}
 
+			const fileHandle = await currentProfile.opfsProfileDirectoryHandle.getFileHandle(file.name, { create: true });
+
+			const uploadPromise = copyToOPFSWithCancel(file, fileHandle, controller.signal);
+			activeUploadsGlobal.set(video.id, {
+				controller,
+				promise: uploadPromise,
+				videoFileName: file.name
+			});
+
+			let uploadError = false;
+
+			try {
+				await uploadPromise;
+
+				thumbnailFileHandle = await currentProfile.opfsProfileDirectoryHandle.getFileHandle(
+					`thumbnail_${file.name}.jpg`,
+					{ create: true }
+				);
+
+				const thumbnailWritable = await thumbnailFileHandle.createWritable();
+				await thumbnailWritable.write(thumbnailBlobData);
+				await thumbnailWritable.close();
+			} catch (err) {
+				uploadError = true;
+				if (err.name === 'AbortError') {
+					console.log('Upload cancelled');
+				} else {
+					console.error(err);
+				}
+			} finally {
+				activeUploadsGlobal.delete(video.id);
+				input.disabled = false;
+				videoLabel.style.pointerEvents = "";
+				videoLabel.style.opacity = "";
+				videoLabel.style.cursor = "";
+				// Re-enable poster upload input
+				posterUploadInput.disabled = false;
+				posterLabel.style.pointerEvents = "";
+				posterLabel.style.opacity = "";
+				posterLabel.style.cursor = "";
+				// Restore clear button text back to "Sil" (Delete)
+				clearRowBtn.textContent = "Sil";
+				input.value = ""; // allow selecting same file again
+			}
+
+			// Only proceed with file reads and UI updates if upload was successful
+			if (uploadError) {
+				videoIndicator.style.backgroundImage = "none";
+				queuedOPFSOperationsCount--;
+				// Reset poster and clear button styles since upload failed/was cancelled
+				posterUploadInput.disabled = false;
+				posterLabel.style.pointerEvents = "";
+				posterLabel.style.opacity = "";
+				posterLabel.style.cursor = "";
+				clearRowBtn.textContent = "Sil";
+				return;
+			}
+
+			videoIndicator.style.backgroundImage = "none";
+
+			const videoFile = await fileHandle.getFile();
+			thumbnailFile = await thumbnailFileHandle.getFile();
+			storageInfo();
+
+			video.src = URL.createObjectURL(videoFile);
+			video.title = videoFile.name;
+			if (thumbnailFile) {
+				video.poster = URL.createObjectURL(thumbnailFile);
+				video.posterTitle = thumbnailFile.name;
+				posterIndicator.textContent = emojiMap.checkmark;
+			}
+			videoIndicator.textContent = emojiMap.checkmark;
+
 			queuedOPFSOperationsCount--;
-			
-			// console.log("VIDEOS ==========> ", state.profiles[state.currentProfileId].videos);
 			if (queuedOPFSOperationsCount < 1) {
 				renderSourceSelectors();
 			}
-			// updateVideoList();
 			renderVideoList();
 			saveState();
 		});
