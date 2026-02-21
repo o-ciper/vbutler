@@ -27,7 +27,7 @@ const videoCountValues = [1, 2, 4];
 // OPFS operation queue counter to prevent rerendering source selectors and video list until all queued operations are finished. This is needed because OPFS operations are async and we don't want to trigger multiple renders while there are still pending operations that will update the state. When an OPFS operation is started, rendering the source selectors cause an interruption of the ongoing OPFS operations. This is likely due to the fact that rendering source selectors involves updating the DOM, which can cause the browser to prioritize user interactions and rendering over ongoing async operations. By using a counter to track the number of queued OPFS operations, we can ensure that we only trigger a render after all operations have completed, preventing any potential interruptions and ensuring a smoother user experience.
 let queuedOPFSOperationsCount = 0;
 
-const activeUploadsGlobal = new Map(); 
+const activeUploads = new Map(); 
 // key: video.id
 // value: { controller, promise }
 
@@ -496,29 +496,6 @@ document.addEventListener("DOMContentLoaded", async () => {
 				'FullscreenToggle',
 			],
 		},
-		userActions: {
-			hotkeys: function(event) {
-				// `this` is the player in this context
-
-				// `x` key = pause
-				if (event.which === 88) {
-					this.pause();
-				}
-				// `y` key = play
-				if (event.which === 89) {
-					this.play();
-				}
-			}
-		},
-		plugins: {
-			hotkeys: {
-				volumeStep: 0.05,
-				seekStep: 5,
-				// enableModifiersForNumbers: false,
-				// enableFullscreen: false,
-				// enableMute: true,
-			},
-		},
 	});
 	vp.mobileUi({
 		fullscreen: {
@@ -863,40 +840,8 @@ function renderSourceSelectors() {
 		videoUploadInput.accept = "video/*,.mkv,.mp4,.webm,.avi,.mov";
 		videoUploadInput.multiple = false;
 		videoUploadInput.style.display = "none";
-		
 		videoUploadInput.addEventListener("change", async (e) => {
-			const activeUploads = new WeakMap();
-			document.addEventListener("click", (e) => {
-				if (e.target.matches(".videoUploadInput")) {
-					if (activeUploads.get(e.target)) {
-					e.preventDefault();
-					e.stopPropagation();
-					}
-				}
-			});
-
-			document.addEventListener("change", async (e) => {
-				if (!e.target.matches(".videoUploadInput")) return;
-
-				const input = e.target;
-
-				// If already uploading → ignore
-				if (activeUploads.get(input)) return;
-
-				try {
-					// Mark as uploading
-					activeUploads.set(input, true);
-					input.disabled = true;
-
-				} catch (err) {
-					console.error(err);
-				} finally {
-					activeUploads.delete(input);
-					input.disabled = false;
-					input.value = ""; // allow selecting same file again
-				}
-			});
-
+			// How to check if an OPFS operation is in progress: https://stackoverflow.com/questions/75570524/is-there-a-way-to-check-if-an-opfs-operation-is-in-progress-to-avoid-concurrent
 			const videoPosterImages = document.querySelectorAll(".video-poster-img");
 			// console.log(videoPosterImages);
 			const file = e.target.files[0];
@@ -969,7 +914,7 @@ function renderSourceSelectors() {
 			}
 
 			
-			let thumbnailFileHandle = null;
+			// let thumbnailFileHandle = null;
 			const videoUrl = URL.createObjectURL(file);
 			const thumbnailBlobData = await generateThumbnail(videoUrl).then(async thumbnailUrl => {
 				// thumbnailFileHandle = await currentProfile.opfsProfileDirectoryHandle.getFileHandle(`thumbnail_${file.name}.jpg`, { create: true });
@@ -999,16 +944,20 @@ function renderSourceSelectors() {
 				return;
 			} else {
 				const fileHandle = await currentProfile.opfsProfileDirectoryHandle.getFileHandle(file.name, { create: true });
-
+				// // Write to it
+				// const writable = await fileHandle.createWritable();
+				// await writable.write(file);
+				// await writable.close();
 				const uploadPromise = copyToOPFSWithCancel(file, fileHandle, controller.signal);
-				activeUploadsGlobal.set(video.id, {
+				activeUploads.set(video.id, {
 					controller,
 					promise: uploadPromise,
-					videoFileName: file.name
+					videoFileName: file.name,
+ 					thumbnailFileName: `thumbnail_${file.name}.jpg`
 				});
 				try {
 					await uploadPromise;
-					thumbnailFileHandle = await currentProfile.opfsProfileDirectoryHandle.getFileHandle(
+					const thumbnailFileHandle = await currentProfile.opfsProfileDirectoryHandle.getFileHandle(
 						`thumbnail_${file.name}.jpg`,
 						{ create: true }
 					);
@@ -1023,7 +972,7 @@ function renderSourceSelectors() {
 						console.error(err);
 					}
 				} finally {
-					activeUploadsGlobal.delete(video.id);
+					activeUploads.delete(video.id);
 				}
 				videoIndicator.style.backgroundImage = "none";
 
@@ -1108,7 +1057,7 @@ function renderSourceSelectors() {
 		clearRowBtn.id = `remove-source-${video.id + 1}-btn`;
 		clearRowBtn.textContent = "Sil";
 		clearRowBtn.addEventListener("click", async () => {
-			const active = activeUploadsGlobal.get(video.id);
+			const active = activeUploads.get(video.id);
 
 			if (active) {
 				active.controller.abort();
@@ -1119,7 +1068,7 @@ function renderSourceSelectors() {
 				// ignore abort error
 				}
 
-				activeUploadsGlobal.delete(video.id);
+				activeUploads.delete(video.id);
 			}
 
 			if (video.src && video.src.startsWith('blob:')) {
@@ -1771,7 +1720,7 @@ async function copyToOPFSWithCancel(file, fileHandle, signal) {
 }
 
 function isUploading(videoId) {
-  return activeUploadsGlobal.has(videoId);
+  return activeUploads.has(videoId);
 }
 
 // Complete workflow with OPFS

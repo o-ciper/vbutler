@@ -9,3 +9,4 @@
 - [ ] PWA (installable, full screen, offline functionality etc.)
 - [ ] Make video title editable by the user
 - [x] Show an indicator while a video is uploading to OPFS
+- [x] There is a problem when uploading more than one video simultaneously. For example when a video is large it takes some time to upload it and I try to upload another video. This causes a problem. Look into it. -- Added some code. Seems ok for now.
