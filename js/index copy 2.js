@@ -24,8 +24,6 @@ const removeProfileBtn = document.getElementById("remove-profile-btn");
 const removeAllProfilesBtn = document.getElementById("remove-all-profiles-btn");
 const videoCountValues = [1, 2, 4];
 
-let DEBUGGING = true;
-
 // OPFS operation queue counter to prevent rerendering source selectors and video list until all queued operations are finished. This is needed because OPFS operations are async and we don't want to trigger multiple renders while there are still pending operations that will update the state. When an OPFS operation is started, rendering the source selectors cause an interruption of the ongoing OPFS operations. This is likely due to the fact that rendering source selectors involves updating the DOM, which can cause the browser to prioritize user interactions and rendering over ongoing async operations. By using a counter to track the number of queued OPFS operations, we can ensure that we only trigger a render after all operations have completed, preventing any potential interruptions and ensuring a smoother user experience.
 let queuedOPFSOperationsCount = 0;
 
@@ -47,8 +45,6 @@ const emojiMap = {
 	lightCheckmark: "✔️",
 	absent: "❎",
 	present: "✅",
-	save: "💾",
-	edit: "✏️",
 };
 
 // Video Upload Elements
@@ -74,14 +70,12 @@ const state = {
 					videos: [
 						{
 							id: 0,
-							storedFileName: "",
-							displayTitle: "",
+							title: "",
 							src: "",
 							poster: "",
 							posterTitle: "",
 							alt: "",
 							currentTime: 0,
-							size: 0,
 						}
 					]
 				}
@@ -100,11 +94,6 @@ const state = {
 		THUMBNAIL_GENERATION_TIME: localStorage.getItem("THUMBNAIL_GENERATION_TIME") ?
 			JSON.parse(localStorage.getItem("THUMBNAIL_GENERATION_TIME")) :
 			10
-	},
-	uiSettings: {
-		showOverlay: localStorage.getItem("showOverlay") ?
-			JSON.parse(localStorage.getItem("showOverlay")) :
-			true,
 	}
 }
 
@@ -139,15 +128,15 @@ let opfsInitPromise = (async function getOpfsRoot(){
 		const opfsProfileDirectoryHandle  = await butlerVideosDirectoryHandle.getDirectoryHandle(profile.name, {create: true});
 		profile.opfsProfileDirectoryHandle = opfsProfileDirectoryHandle;
 		for (video of profile.videos) {
-			if (video.storedFileName !== "") {
-				// console.log(`Getting video handle for ${video.storedFileName} in profile ${profile.name}`);
+			if (video.title !== "") {
+				// console.log(`Getting video handle for ${video.title} in profile ${profile.name}`);
 				try {
-					const opfsVideoHandle = await opfsProfileDirectoryHandle.getFileHandle(video.storedFileName);
-					// console.log(`Got video handle for ${video.storedFileName} in profile ${profile.name}: `, opfsVideoHandle);
+					const opfsVideoHandle = await opfsProfileDirectoryHandle.getFileHandle(video.title);
+					// console.log(`Got video handle for ${video.title} in profile ${profile.name}: `, opfsVideoHandle);
 					try {
 						const opfsVideoFile = await opfsVideoHandle.getFile();
 						video.src = URL.createObjectURL(opfsVideoFile);
-						// console.log(`Created object URL for ${video.storedFileName} in profile ${profile.name}: `, video.src);
+						// console.log(`Created object URL for ${video.title} in profile ${profile.name}: `, video.src);
 					} catch (err) {
 						console.error("Could not create object URL from file handle:", err);
 					}
@@ -156,16 +145,16 @@ let opfsInitPromise = (async function getOpfsRoot(){
 				}
 			}
 			if (video.posterTitle !== "") {
-				// console.log(`Video ${video.storedFileName} in profile ${profile.name} has a poster: ${video.poster}`);
+				// console.log(`Video ${video.title} in profile ${profile.name} has a poster: ${video.poster}`);
 				try {
 					const thumbnailHandle = await opfsProfileDirectoryHandle.getFileHandle(video.posterTitle);
-					// console.log(`Got thumbnail handle for ${video.storedFileName} in profile ${profile.name}: `, thumbnailHandle);
+					// console.log(`Got thumbnail handle for ${video.title} in profile ${profile.name}: `, thumbnailHandle);
 					try {
 						const opfsThumbnailFile = await thumbnailHandle.getFile();
 						video.poster = URL.createObjectURL(opfsThumbnailFile);
 						video.posterTitle = thumbnailHandle.name;
 						// console.log(video.poster);
-						// console.log(`Created object URL for thumbnail of ${video.storedFileName} in profile ${profile.name}: `, video.poster);
+						// console.log(`Created object URL for thumbnail of ${video.title} in profile ${profile.name}: `, video.poster);
 					} catch (err) {
 						console.error("Could not create object URL from thumbnail handle:", err);
 					}
@@ -233,7 +222,7 @@ function saveState() {
 }
 
 /* Confirmation Modal Utility */
-function showConfirmModal(title, message, okButtonText) {
+function showConfirmModal(title, message) {
 	return new Promise((resolve) => {
 		const overlay = document.getElementById("confirm-modal-overlay");
 		const titleEl = document.getElementById("confirm-modal-title");
@@ -243,7 +232,6 @@ function showConfirmModal(title, message, okButtonText) {
 
 		titleEl.textContent = title;
 		messageEl.innerHTML = message;
-		okBtn.textContent = okButtonText;
 
 		// Temporarily close settings dialog so modal appears on top
 		const settingsWasOpen = settingsPanelContainer.open;
@@ -345,14 +333,12 @@ addProfileBtn.addEventListener("click", async () => {
 		videos: [
 			{
 				id: 0,
-				storedFileName: "",
-				displayTitle: "",
+				title: "",
 				src: "",
 				poster: "",
 				posterTitle: "",
 				alt: "",
 				currentTime: 0,
-				size: 0,
 			}
 		]
 	};
@@ -393,11 +379,11 @@ removeProfileBtn.addEventListener("click", async () => {
 			const confirmationMessage = `
 				<strong>${profile.name}</strong> profilinde <strong>${profile.videos.filter(video => video.src && video.src !== "").length} adet video</strong> var:<br>
 				<ul>
-				${profile.videos.filter(video => video.src && video.src !== "").map(video => `<li>${video.displayTitle}</li>`).join("")}
+				${profile.videos.filter(video => video.src && video.src !== "").map(video => `<li>${video.title}</li>`).join("")}
 				</ul>
 				Bu profili silmek, bu videoların tarayıcı hafızasından kalıcı olarak silinmesine neden olacak. <strong>Bu işlem geri alınamaz.</strong><br><br>Devam etmek istediğinize emin misiniz?
 			`;
-			const confirmed = await showConfirmModal("Dikkat", confirmationMessage, "Sil");
+			const confirmed = await showConfirmModal("Dikkat", confirmationMessage);
 			console.log(confirmed);
 			if (!confirmed) {
 				const idx = idsToRemove.indexOf(profile.id);
@@ -451,7 +437,7 @@ removeAllProfilesBtn.addEventListener("click", async () => {
 
 	const confirmationMessage = `<strong>Tüm profilleri silmek istediğinize emin misiniz?</strong><br><br>Bu işlem, "Varayılan" profil hariç tüm profillerdeki videoların tarayıcı hafızasından kalıcı olarak silinmesine neden olacak. <strong>Bu işlem geri alınamaz.</strong>`;
 
-	const confirmed = await showConfirmModal("Dikkat", confirmationMessage, "Tümünü Sil");
+	const confirmed = await showConfirmModal("Dikkat", confirmationMessage);
 
 	if (!confirmed) {
 		return;
@@ -497,9 +483,9 @@ document.addEventListener("DOMContentLoaded", async () => {
 		autoplay: false,
 		preload: 'auto',
 		loadingSpinner: true,
-		// userActions: {
-		// 	hotkeys: true,
-		// },
+		userActions: {
+			hotkeys: true,
+		},
 		controlBar: {
 			VolumePanel: {
 				inline: false
@@ -511,20 +497,20 @@ document.addEventListener("DOMContentLoaded", async () => {
 				'FullscreenToggle',
 			],
 		},
-		// userActions: {
-		// 	hotkeys: function(event) {
-		// 		// `this` is the player in this context
+		userActions: {
+			hotkeys: function(event) {
+				// `this` is the player in this context
 
-		// 		// `x` key = pause
-		// 		if (event.which === 88) {
-		// 			this.pause();
-		// 		}
-		// 		// `y` key = play
-		// 		if (event.which === 89) {
-		// 			this.play();
-		// 		}
-		// 	}
-		// },
+				// `x` key = pause
+				if (event.which === 88) {
+					this.pause();
+				}
+				// `y` key = play
+				if (event.which === 89) {
+					this.play();
+				}
+			}
+		},
 		plugins: {
 			hotkeys: {
 				volumeStep: 0.05,
@@ -566,12 +552,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 		document.getElementById('vp').style.display = 'none';
 	});
 
-	vp.on('keydown', (e) => {
-		if (!vp.isFullscreen() && (e.key === " " || e.code === "Space")) {
-			vp.pause();
-			return false;
-		}
-	});
+
 
 	videoCountSelector.value = state.videoCount;
 	if (state.profiles[state.currentProfileId].videos.length === 0 || state.profiles[state.currentProfileId].videos.length !== state.profiles[state.currentProfileId].videos.videoCount) {
@@ -603,7 +584,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 						${names.split('<br>').map(n => `<li>${n}</li>`).join('')}
 					</ul>
 				`;
-				const confirmed = await showConfirmModal("Dikkat", message, "Devam Et");
+				const confirmed = await showConfirmModal("Dikkat", message);
 				
 				if (!confirmed) {
 					// revert select value
@@ -635,7 +616,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 				if (toKeep[i]) {
 					newVideos.push(Object.assign({}, toKeep[i], { id: i }));
 				} else {
-					newVideos.push({ id: i, storedFileName: "", displayTitle: "", src: "", poster: "", posterTitle: "", alt: "", currentTime: 0, size: 0 });
+					newVideos.push({ id: i, title: "", src: "", poster: "", posterTitle: "", alt: "", currentTime: 0 });
 				}
 			}
 
@@ -652,7 +633,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 		currentProfile.videoCount = count;
 		// Ensure array has the correct length
 		for (let i = currentProfile.videos.length; i < count; i++) {
-			currentProfile.videos[i] = { id: i, storedFileName: "", displayTitle: "", src: "", poster: "", posterTitle: "", alt: "", currentTime: 0, size: 0 };
+			currentProfile.videos[i] = { id: i, title: "", src: "", poster: "", posterTitle: "", alt: "", currentTime: 0 };
 		}
 		saveState();
 		updateVideoList();
@@ -800,11 +781,11 @@ function renderSourceSelectors() {
 			const message = `
 				<strong>${currentProfile.name}</strong> profilindeki <strong>bütün videolar</strong> tarayıcı hafızasından kalıcı olarak silinecek:<br>
 				<ul>
-					${currentProfile.videos.filter(video => video.src && video.src !== "").map(video => `<li>${video.displayTitle}</li>`).join('')}
+					${currentProfile.videos.filter(video => video.src && video.src !== "").map(video => `<li>${video.title}</li>`).join('')}
 				</ul>
 				Bu işlem geri alınamaz.<br><br>Devam etmek istediğinize emin misiniz?
 			`;
-			const confirmed = await showConfirmModal("Dikkat", message, "Devam Et");
+			const confirmed = await showConfirmModal("Dikkat", message);
 			if (!confirmed) {
 				return;
 			}
@@ -817,13 +798,11 @@ function renderSourceSelectors() {
 				URL.revokeObjectURL(video.poster);
 			}
 			video.src = "";
-			video.storedFileName = "";
-			video.displayTitle = "";
+			video.title = "";
 			video.poster = "";
 			video.posterTitle = "";
 			video.alt = "";
 			video.currentTime = 0;
-			video.size = 0;
 		}
 		if (butlerVideosDirectoryHandle && currentProfile.opfsProfileDirectoryHandle) {
 			await clearDirectoryContents(currentProfile.opfsProfileDirectoryHandle);
@@ -889,35 +868,19 @@ function renderSourceSelectors() {
 		videoUploadInput.addEventListener("change", async (e) => {
 			const input = e.target;
 			const file = input.files ? input.files[0] : null;
-			// const videoPosterImages = document.querySelectorAll(".video-poster-img");
+			const videoPosterImages = document.querySelectorAll(".video-poster-img");
 
-			// const videoTestElement = document.createElement('video');
-
-			if(!file) {
-				alert("Dosya seçilemedi. Lütfen tekrar deneyin.");
-				return;
-			}
-
-			const fileSizeGB = file.size / (1024 * 1024 * 1024);
-
-			const shouldUpload = await shouldUploadVideo(file);
-			if(!shouldUpload.supported) {
-				alert(shouldUpload.reason);
+			const videoTestElement = document.createElement('video');
+			if (!file || !validVideoFileType(file) || !videoTestElement.canPlayType(file.type)) {
+				alert("Hata: Seçilen dosya desteklenmeyen bir video türüdür, lütfen başka bir video dosyası seçin.");
 				input.value = "";
 				return;
-			} else if (!shouldUpload?.width || !shouldUpload?.height) {
-				const message = "Video boyutları alınamadı. Bu, videonun bazı cihazlarda düzgün oynatılmamasına neden olabilir. Yine de devam etmek istiyor musunuz?";
-				const proceedWithoutDimensions = await showConfirmModal("Dikkat", message, "Devam Et");
-				if (!proceedWithoutDimensions) {
-					input.value = "";
-					return;
-				}
 			}
 
 			if (video.src && video.src.startsWith('blob:')) {
 				URL.revokeObjectURL(video.src);
-				if (butlerVideosDirectoryHandle && currentProfile.opfsProfileDirectoryHandle && video.storedFileName) {
-					currentProfile.opfsProfileDirectoryHandle.removeEntry(video.storedFileName).then(() => {
+				if (butlerVideosDirectoryHandle && currentProfile.opfsProfileDirectoryHandle && video.title) {
+					currentProfile.opfsProfileDirectoryHandle.removeEntry(video.title).then(() => {
 						storageInfo();
 					}).catch(err => {
 						console.error("Error removing old video file from OPFS: ", err);
@@ -1028,7 +991,7 @@ function renderSourceSelectors() {
 			activeUploadsGlobal.set(video.id, {
 				controller,
 				promise: uploadPromise,
-				displayTitle: file.name
+				videoFileName: file.name
 			});
 
 			let uploadError = false;
@@ -1087,9 +1050,7 @@ function renderSourceSelectors() {
 			storageInfo();
 
 			video.src = URL.createObjectURL(videoFile);
-			video.storedFileName = videoFile.name;
-			video.displayTitle = videoFile.name;
-			video.size = fileSizeGB.toFixed(2) + " GB";
+			video.title = videoFile.name;
 			if (thumbnailFile) {
 				video.poster = URL.createObjectURL(thumbnailFile);
 				video.posterTitle = thumbnailFile.name;
@@ -1133,61 +1094,18 @@ function renderSourceSelectors() {
 		posterUploadInput.className = "poster_upload_input upload-input";
 		posterUploadInput.accept = "image/*";
 		posterUploadInput.style.display = "none";
-		posterUploadInput.addEventListener("change", async (e) => {
-			// working here
-			const input = e.target;
-			const imageFile = input.files ? input.files[0] : null;
-			if (!imageFile) {
-				alert("Dosya seçilemedi. Lütfen tekrar deneyin.");
-				return;
-			}
-
-			const imageValidatioObject = await validatePosterImageBeforeOPFS(imageFile);
-
-			if (!imageValidatioObject.supported) {
-				alert(imageValidatioObject.reason);
-				return;
-			}
-
-			if (video.poster && video.poster.startsWith('blob:')) {
-				URL.revokeObjectURL(video.poster);
-				if (butlerVideosDirectoryHandle && currentProfile.opfsProfileDirectoryHandle && video.posterTitle) {
-					currentProfile.opfsProfileDirectoryHandle.removeEntry(video.posterTitle).then(() => {
-						storageInfo();
-					}).catch(err => {
-						console.error("Error removing old poster file from OPFS: ", err);
-					});
-				}
-			}
-
-			try {
-				const posterFileHandle = await currentProfile.opfsProfileDirectoryHandle.getFileHandle(video.posterTitle, { create: true });
-				const posterWritable = await posterFileHandle.createWritable();
-				await posterWritable.write(imageFile);
-				await posterWritable.close();
-
-				video.poster = URL.createObjectURL(imageFile);
-				posterIndicator.textContent = emojiMap.checkmark;
-
+		posterUploadInput.addEventListener("change", (e) => {
+			// working here 
+			const file = e.target.files[0];
+			if (file && validImageFileType(file)) {
+				video.poster = URL.createObjectURL(file);
+				posterIndicator.textContent = emojiMap.checked;
 				saveState();
 				renderSourceSelectors();
 				renderVideoList();
-			} catch (err) {
-				console.error("Error saving poster to OPFS: ", err);
-				alert("Poster dosyası OPFS'ye kaydedilirken bir hata oluştu. Lütfen tekrar deneyin.");
-				return;
+			} else {
+				alert("Lütfen geçerli bir resim dosyası seçin.");
 			}
-
-
-			// if (validImageFileType(file)) {
-			// 	video.poster = URL.createObjectURL(file);
-			// 	posterIndicator.textContent = emojiMap.checked;
-			// 	saveState();
-			// 	renderSourceSelectors();
-			// 	renderVideoList();
-			// } else {
-			// 	alert("Lütfen geçerli bir resim dosyası seçin.");
-			// }
 		});
 
 		const clearRowBtn = document.createElement("button");
@@ -1216,9 +1134,9 @@ function renderSourceSelectors() {
 			if (video.poster && video.poster.startsWith('blob:')) {
 				URL.revokeObjectURL(video.poster);
 			}
-			if (butlerVideosDirectoryHandle && currentProfile.opfsProfileDirectoryHandle && video.storedFileName) {
+			if (butlerVideosDirectoryHandle && currentProfile.opfsProfileDirectoryHandle && video.title) {
 			// if (butlerVideosDirectoryHandle && currentProfile.opfsProfileDirectoryHandle) {
-				currentProfile.opfsProfileDirectoryHandle.removeEntry(video.storedFileName).then(() => {
+				currentProfile.opfsProfileDirectoryHandle.removeEntry(video.title).then(() => {
 					storageInfo();
 				}).catch(err => {
 					console.error("Error removing video file from OPFS: ", err);
@@ -1231,14 +1149,12 @@ function renderSourceSelectors() {
 					console.error("Error removing thumbnail file from OPFS: ", err);
 				});
 			}
-			video.storedFileName = "";
-			video.displayTitle = "";
+			video.title = "";
 			video.src = "";
 			video.poster = "";
 			video.posterTitle = "";
 			video.alt = "";
 			video.currentTime = 0;
-			video.size = 0;
 			updateVideoList();
 			saveState();
 			// console.log("VIDEOS ==========> ", state.profiles[state.currentProfileId].videos);
@@ -1261,131 +1177,12 @@ function renderSourceSelectors() {
 		row.appendChild(forms);
 		row.appendChild(clearRowBtn);
 
-		const videoTitleAndSizeInfoContainer = document.createElement("div");
-		videoTitleAndSizeInfoContainer.className = "video-title-and-size-info-container";
-		const videoTitleContainer = document.createElement("div");
-		videoTitleContainer.className = "source-selection-section-video-title-container";
-
-		const videoTitleEditingButtonContainer = document.createElement("div");
-		videoTitleEditingButtonContainer.className = "video-title-editing-button-container";
-
 		const videoTitle = document.createElement("div");
 		videoTitle.className = "source-selection-section-video-title";
-		videoTitle.textContent = `${video.displayTitle}` || "";
+		videoTitle.textContent = `${video.title}` || "";
 
-		if (video.src && video.src !== "") {
-			const editTitleBtn = document.createElement("button");
-			const saveTitleBtn = document.createElement("button");
-			// const titleIsEmpty = !video.displayTitle || video.displayTitle.trim() === "";
-			const cancelEditBtn = document.createElement("button");
-			const titleIsDefault = video.displayTitle === (video.storedFileName || `Video ${video.id + 1}`);
-			const returnToDefaultTitle = document.createElement("button");;
-			
-			
-			
-			saveTitleBtn.disabled = true;
-			cancelEditBtn.disabled = true;
-
-			editTitleBtn.type = "button";
-			editTitleBtn.className = "btn btn-sm btn-secondary edit-title-btn settings-btn";
-			editTitleBtn.id = `${state.currentProfileId}-edit-title-${video.id + 1}-btn`;
-			editTitleBtn.textContent = "Düzenle";
-			
-
-			saveTitleBtn.type = "button";
-			saveTitleBtn.className = "btn btn-sm btn-secondary save-title-btn settings-btn";
-			saveTitleBtn.id = `${state.currentProfileId}-save-title-${video.id + 1}-btn`;
-			saveTitleBtn.textContent = "Kaydet";
-			
-
-			videoTitleEditingButtonContainer.appendChild(editTitleBtn);
-			videoTitleEditingButtonContainer.appendChild(saveTitleBtn);
-			videoTitleEditingButtonContainer.appendChild(cancelEditBtn);
-			videoTitleEditingButtonContainer.appendChild(returnToDefaultTitle);
-
-			editTitleBtn.addEventListener("click", () => {
-				console.log(video);
-				videoTitle.contentEditable = true;
-				videoTitle.focus();
-				videoTitle.classList.add("editing");
-				editTitleBtn.disabled = true;
-				saveTitleBtn.disabled = false;
-				cancelEditBtn.disabled = false;
-				// Move cursor to end of text
-				document.execCommand('selectAll', false, null);
-				document.getSelection().collapseToEnd();
-			});
-
-			saveTitleBtn.addEventListener("click", () => {
-				console.log(video);
-				const newTitle = videoTitle.textContent.trim();
-				console.log("New title:", newTitle);
-				video.displayTitle = newTitle;
-				saveTitleBtn.disabled = true;
-				editTitleBtn.disabled = false;
-				videoTitle.contentEditable = false;
-				videoTitle.classList.remove("editing");
-				cancelEditBtn.disabled = true;
-				saveState();
-				updateVideoList();
-				renderSourceSelectors();
-				renderVideoList();
-			});
-
-			cancelEditBtn.type = "button";
-			cancelEditBtn.className = "btn btn-sm btn-secondary cancel-edit-btn settings-btn";
-			cancelEditBtn.id = `${state.currentProfileId}-cancel-edit-title-${video.id + 1}-btn`;
-			cancelEditBtn.textContent = "İptal";
-			cancelEditBtn.addEventListener("click", () => {
-				videoTitle.textContent = video.displayTitle;
-				saveTitleBtn.disabled = true;
-				editTitleBtn.disabled = false;
-				videoTitle.contentEditable = false;
-				videoTitle.classList.remove("editing");
-				cancelEditBtn.disabled = true;
-			});
-
-			returnToDefaultTitle.type = "button";
-			returnToDefaultTitle.className = "btn btn-sm btn-secondary return-to-default-title-btn settings-btn";
-			returnToDefaultTitle.id = `${state.currentProfileId}-return-to-default-title-${video.id + 1}-btn`;
-			returnToDefaultTitle.textContent = "Varsayılan";
-			if (titleIsDefault) {
-				returnToDefaultTitle.disabled = true;
-			}
-
-			returnToDefaultTitle.addEventListener("click", () => {
-				video.displayTitle = video.storedFileName || `Video ${video.id + 1}`;
-				videoTitle.textContent = video.displayTitle;
-				saveState();
-				updateVideoList();
-				renderSourceSelectors();
-				renderVideoList();
-			});
-		}
-
-		const videoSizeContainer = document.createElement("div");
-		videoSizeContainer.className = "video-size-container";
-		videoSizeContainer.textContent = "Dosya Boyutu: ";
-		const videoSize = document.createElement("span");
-		videoSize.className = "video-size";
-		videoSize.textContent = video.size ? `${video.size}` : "";
-		
-		videoSizeContainer.appendChild(videoSize);
 		rowContainer.appendChild(row);
-		videoTitleAndSizeInfoContainer.appendChild(videoSizeContainer);
-		videoTitleAndSizeInfoContainer.appendChild(videoTitle);
-
-		if (videoTitle.textContent === "") {
-			videoTitleAndSizeInfoContainer.classList.add("video-display-title-empty");
-		} else {
-			videoTitleAndSizeInfoContainer.classList.remove("video-display-title-empty");
-		}
-
-		videoTitleContainer.appendChild(videoTitleAndSizeInfoContainer);
-		videoTitleContainer.appendChild(videoTitleEditingButtonContainer);
-		if (video.src && video.src !== "") {
-			rowContainer.appendChild(videoTitleContainer);
-		}
+		rowContainer.appendChild(videoTitle);
 		
 		sourceSelectorSection.appendChild(rowContainer);
 	}
@@ -1396,13 +1193,12 @@ function createDefaultVideoList() {
 	for (let i = 0; i < state.profiles[state.currentProfileId].videoCount; i++) {
 		state.profiles[state.currentProfileId].videos[i] = {
 			id: i,
-			storedFileName: "",
+			title: "",
 			src: "",
 			poster: "",
 			posterTitle: "",
 			alt: "",
 			currentTime: 0,
-			size: 0,
 		};
 	}
 }
@@ -1423,14 +1219,12 @@ function updateVideoList() {
 		} else {
 			newList[i] = {
 				id: i,
-				storedFileName: "",
-				displayTitle: "",
+				title: "",
 				src: "",
 				poster: "",
 				posterTitle: "",
 				alt: "",
 				currentTime: 0,
-				size: 0,
 			};
 		}
 	}
@@ -1454,7 +1248,7 @@ async function renderVideoList() {
 		videoListItem.className = "video-list-item";
 		const img = document.createElement("img");
 		img.className = "thumbnail video-poster-img";
-		img.alt = video.alt || video.storedFileName || `Video ${video.id + 1}`;
+		img.alt = video.alt || video.title || `Video ${video.id + 1}`;
 		// Always add an <img> so DOM indices match `state.profiles[].videos` indexes.
 		// Show poster if present. Show placeholder only when there is a video but no poster.
 		// Hide the <img> entirely for empty slots (no video).
@@ -1470,19 +1264,6 @@ async function renderVideoList() {
 		}
 		videoListItem.appendChild(img);
 
-		if (!DEBUGGING && img.getAttribute("src") !== "") {
-			videoListItem.addEventListener("contextmenu", (e) => {
-				console.log("Context menu disabled on video thumbnail.");
-				e.preventDefault();
-				return false;
-			});
-			videoListItem.addEventListener("dragstart", (e) => {
-				console.log("Drag and drop disabled on video thumbnail.");
-				e.preventDefault();
-				return false;
-			});
-		}
-
 		if (!video.src || video.src === "") {
 			videoListItem.style.backgroundColor = "#333";
 		}
@@ -1490,23 +1271,18 @@ async function renderVideoList() {
 		if (video.src && video.src !== "") {
 			const overlay = document.createElement("div");
 			overlay.className = "video-title-overlay";
-			if (video.displayTitle && video.displayTitle !== "") {
-				// overlay.textContent = video.displayTitle.length < 26 ? video.displayTitle : `${video.displayTitle.slice(0, 26)}...`;
-				overlay.textContent = video.displayTitle;
+			if (video.title && video.title !== "") {
+				overlay.textContent = video.title.length < 26 ? video.title : `${video.title.slice(0, 26)}...`;
 			} else {
-				// overlay.textContent = `Video ${video.id + 1}`;
-				overlay.textContent = "";
+				overlay.textContent = `Video ${video.id + 1}`;
 			}
-			if (state.uiSettings.showOverlay && video.displayTitle && video.displayTitle !== "") {
-				videoListItem.appendChild(overlay);
-			}
+			videoListItem.appendChild(overlay);
 		} else {
 			const emptyText = document.createElement("div");
 			emptyText.className = "empty-slot-text";
 			emptyText.textContent = `Video ${video.id + 1}: (Video yok)`;
 			videoListItem.appendChild(emptyText);
 		}
-
 		videoListItem.addEventListener("click", async () => {
 			if (!video.src || video.src === "") {
 				return;
@@ -1550,7 +1326,7 @@ async function renderVideoList() {
 							imgEl.style.display = '';
 							video.poster = thumbnailUrl;
 							video.posterTitle = thumbnailHandle.name;
-							// console.log(`Set thumbnail for ${video.storedFileName} in profile ${currentProfile.name}: `, thumbnailUrl);
+							// console.log(`Set thumbnail for ${video.title} in profile ${currentProfile.name}: `, thumbnailUrl);
 						}).catch(err => {
 							console.error("Error loading thumbnail from OPFS: ", err);
 							imgEl.src = "./img/placeholder.svg";
@@ -1573,7 +1349,6 @@ async function renderVideoList() {
 			imgEl.style.display = 'none';
 		}
 	}
-
 	fitThumbnailsInViewport(state.profiles[state.currentProfileId].videos.length);
 }
 
@@ -1771,9 +1546,7 @@ async function openFullscreen(player) {
 	};
 
 	function onFullscreenChange() {
-		if (!document.fullscreenElement) {
-			cleanup();
-		}
+		if (!document.fullscreenElement) cleanup();
 	}
 
 	vp.one('ended', cleanupVideoPlayback);
@@ -1835,7 +1608,7 @@ async function probeVideoMetadata(file) {
   });
 }
 
-async function testPlayback(file, timeoutMs = 2800) {
+async function testPlayback(file, timeoutMs = 800) {
   return new Promise((resolve, reject) => {
     const video = document.createElement('video');
     video.muted = true;
@@ -1863,13 +1636,13 @@ async function testPlayback(file, timeoutMs = 2800) {
         resolve(true);
       } catch {
         cleanup();
-        resolve(false);
+        reject(new Error("Playback failed"));
       }
     };
 
     video.onerror = () => {
       cleanup();
-       resolve(false);
+      reject(new Error("Video error during playback"));
     };
   });
 }
@@ -1890,68 +1663,47 @@ async function testPlayback(file, timeoutMs = 2800) {
 
 
 async function validateVideoBeforeOPFS(file) {
-
-	// Check size limits if needed
-	const MAX_SIZE = 4096 * 1024 * 1024; // 4GB limit for OPFS
-	if (file.size > MAX_SIZE) {
-	return { supported: false, reason: 'Dosya çok büyük.' };
-	}
-
-	// Create video element test
-	const video = document.createElement('video');
-	const url = URL.createObjectURL(file);
-	video.src = url;
-
-	return new Promise((resolve) => {
-		video.preload = 'metadata';
-
-		video.onloadedmetadata = () => {
-			URL.revokeObjectURL(url);
-			resolve({
-				supported: true,
-				duration: video.duration,
-				width: video.videoWidth,
-				height: video.videoHeight,
-				mimeType: file.type,
-				size: file.size
-			});
-		};
-
-		video.onerror = (e) => {
-			URL.revokeObjectURL(url);
-			console.error('Video error:', video.error);
-			resolve({
-				supported: false,
-				reason: video.error?.message || 'Bilinmeyen video hatası',
-				code: video.error?.code
-			});
-		};
-	});
-}
-
-async function validatePosterImageBeforeOPFS(file) {
-	if (!file.type.startsWith('image/')) {
-		return { supported: false, reason: 'Dosya biçimi resim değil'};
-	}
-	const img = document.createElement('img');
-	const url = URL.createObjectURL(file);
-	img.src = url;
-
-	return new Promise((resolve) => {
-		img.onload = () => {
-			URL.revokeObjectURL(url);
-			if (img.naturalWidth > 0 && img.naturalHeight > 0) {
-				resolve({ supported: true });
-			} else {
-				resolve({ supported: false, reason: 'Resim yüklenemedi, başka bir resim formatı deneyin' });
-			}
-		}
-
-		img.onerror = () => {
-			URL.revokeObjectURL(url);
-			resolve({ supported: false, reason: 'Resim hatası, poster oluşturulamaz, başka bir resim formatı deneyin' });
-		};
-	});
+  // Check basic file type
+  if (!file.type.startsWith('video/')) {
+    return { supported: false, reason: 'Dosya biçimi video değil' };
+  }
+  
+  // Check size limits if needed
+  const MAX_SIZE = 4096 * 1024 * 1024; // 4GB limit for OPFS
+  if (file.size > MAX_SIZE) {
+    return { supported: false, reason: 'Dosya çok büyük.' };
+  }
+  
+  // Create video element test
+  const video = document.createElement('video');
+  const url = URL.createObjectURL(file);
+  video.src = url;
+  
+  return new Promise((resolve) => {
+    video.preload = 'metadata';
+    
+    video.onloadedmetadata = () => {
+      URL.revokeObjectURL(url);
+      resolve({
+        supported: true,
+        duration: video.duration,
+        width: video.videoWidth,
+        height: video.videoHeight,
+        mimeType: file.type,
+        size: file.size
+      });
+    };
+    
+    video.onerror = (e) => {
+      URL.revokeObjectURL(url);
+      console.error('Video error:', video.error);
+      resolve({
+        supported: false,
+        reason: video.error?.message || 'Bilinmeyen video hatası',
+        code: video.error?.code
+      });
+    };
+  });
 }
 
 function validatePosterGenerationBeforeOPFS(file) {
@@ -1979,6 +1731,38 @@ function validatePosterGenerationBeforeOPFS(file) {
 		};
 	});
 }
+
+// async function copyToOPFSWithCancel_(file, filename, fileHandle, signal) {
+//   const tempName = filename + '.partial';
+//   const writable = await fileHandle.createWritable();
+
+//   const reader = file.stream().getReader();
+
+//   try {
+//     while (true) {
+//       if (signal.aborted) {
+//         throw new DOMException('Aborted', 'AbortError');
+//       }
+
+//       const { value, done } = await reader.read();
+//       if (done) break;
+
+//       await writable.write(value);
+//     }
+
+//     await writable.close();
+
+//     // Rename temp file → final file
+//     await state.profiles[state.currentProfileId].opfsProfileDirectoryHandle.move?.(tempName, filename); // Chromium 121+
+//     // await state.profiles[state.currentProfileId].opfsProfileDirectoryHandle.removeEntry(filename, { recursive: false }).catch(() => {});
+//     await fileHandle.remove().catch(() => {});
+//   } catch (err) {
+//     await writable.abort(); // rollback write
+//     // await state.profiles[state.currentProfileId].opfsProfileDirectoryHandle.removeEntry(tempName).catch(() => {});
+// 	await fileHandle.remove().catch(() => {});
+//     throw err;
+//   }
+// }
 
 async function copyToOPFSWithCancel(file, fileHandle, signal) {
   const writable = await fileHandle.createWritable();
@@ -2025,9 +1809,7 @@ async function handleVideoUpload(file) {
 // Simple implementation
 async function shouldUploadVideo(file) {
   // Quick MIME type check
-  if (!file.type.startsWith('video/')){
-	return {supported: false, reason: 'Dosya biçimi video değil'};
-  }
+  if (!file.type.startsWith('video/')) return false;
   
   // Test if browser can play it
   const video = document.createElement('video');
@@ -2036,9 +1818,9 @@ async function shouldUploadVideo(file) {
   if (canPlay === 'probably') return true;
   if (canPlay === 'maybe') {
     // Do more thorough check
-    return await validateVideoBeforeOPFS(file);
+    return await validateVideoBeforeOPFS(file).supported;
   }
-  return {supported: false, reason: 'Tarayıcı bu video formatını desteklemiyor'};
+  return false;
 }
 
 
@@ -2157,6 +1939,31 @@ const videoFileTypes = [
 	"video/VP9",
 	"video/webm",
 	"video/x-matroska",
+	// Video
+	// ID                                       : 1
+	// Format                                   : HEVC
+	// Format/Info                              : High Efficiency Video Coding
+	// Format profile                           : Main 10@L4@Main
+	// Codec ID                                 : V_MPEGH/ISO/HEVC
+	// Duration                                 : 50 min 2 s
+	// Bit rate                                 : 2 229 kb/s
+	// Width                                    : 1 920 pixels
+	// Height                                   : 800 pixels
+	// Display aspect ratio                     : 2.40:1
+	// Frame rate mode                          : Constant
+	// Frame rate                               : 23.976 (24000/1001) FPS
+	// Color space                              : YUV
+	// Chroma subsampling                       : 4:2:0
+	// Bit depth                                : 10 bits
+	// Bits/(Pixel*Frame)                       : 0.061
+	// Stream size                              : 798 MiB (91%)
+	// Default                                  : Yes
+	// Forced                                   : No
+	// Color range                              : Limited
+	// Color primaries                          : BT.709
+	// Transfer characteristics                 : BT.709
+	// Matrix coefficients                      : BT.709
+	// what would be the appropriate MIME type for this video? "video/hevc" or "video/H265" or "video/H266"? I will include all three in the list just to be safe, but in testing I will pay attention to which one actually works for this specific video and make a note of it for future reference.
 ];
 
 const imageFileTypes = [

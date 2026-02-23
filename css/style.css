@@ -108,6 +108,61 @@ main {
 	text-align: center;
 }
 
+.video-title-and-size-info-container {
+	/* display: flex;
+	flex-direction: column;
+	gap: 8px; */
+	margin-bottom: 4px;
+}
+.video-display-title-empty {
+	gap: 0px;
+	margin-bottom: 8px;
+}
+
+
+.source-selection-section-video-title-container {
+	margin-left: 2vw;
+	display: flex;
+	flex-direction: column;
+	margin-bottom: 6px;
+}
+
+.source-selection-section-video-title {
+	white-space: pre-wrap;      /* Webkit */    
+	white-space: -moz-pre-wrap; /* Firefox */     
+	white-space: -pre-wrap;     /* Opera <7 */    
+	white-space: -o-pre-wrap;   /* Opera 7 */     
+	word-wrap: break-word;      /* IE */ 
+	word-break: break-all;
+	border-left: 1px solid #555;
+	padding-left: 8px;
+	margin-bottom: 4px;
+}
+
+.video-title-editing-button-container {
+	display: flex;
+	flex-direction: row;
+	gap: 8px;
+	margin-right: 8px;
+}
+
+.video-size {
+	font-size: 0.8rem;
+	color: #a2a2a2;
+	border: 1px solid #444;
+	background-color: #333;
+	padding: 2px 6px;
+	border-radius: 4px;
+	display: inline-block;
+	margin-bottom: 8px;
+}
+
+.editing {
+	background: rgb(67, 66, 66);
+	padding: 4px 16px;
+	border-radius: 4px;
+}
+
 .video-title-overlay {
 	position: absolute;
 	bottom: 0;
@@ -115,8 +170,13 @@ main {
 	width: 100%;
 	background: rgba(0, 0, 0, 0.6);
 	color: #fff;
-	padding: 4px 8px;
-	font-size: max(1rem, 1.5cqw, 2.5cqh);
+	padding: 4px 16px;
+	font-size: max(1rem, 1cqw, 2cqh);
+	overflow: hidden;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+	word-break: break-all;
+	word-wrap: break-word;
 	text-align: center;
 	box-sizing: border-box;
 	border-bottom-left-radius: 8px;
@@ -364,15 +424,6 @@ video {
 	/* background-image: url('../img/trash.png'); */
 }
 
-.source-selection-section-video-title {
-	padding-left: 3vw;
-	white-space: pre-wrap;      /* Webkit */    
-	white-space: -moz-pre-wrap; /* Firefox */     
-	white-space: -pre-wrap;     /* Opera <7 */    
-	white-space: -o-pre-wrap;   /* Opera 7 */     
-	word-wrap: break-word;      /* IE */ 
-}
-
 .row-number {
 	width: 2ch;
 	text-align: center;
@@ -522,6 +573,7 @@ select::picker(select) {
 	padding: 1rem;
 	overflow: auto;
 	word-wrap: break-word;
+	word-break: break-all;
 }
 
 .confirm-modal-card {

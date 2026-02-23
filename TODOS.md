@@ -1,12 +1,12 @@
 # TODOS
 - [x] When there are more than one video and poster, deleting a video causes "Error loading thumbnail from OPFS:  TypeError: Cannot set properties of undefined (setting 'src')" at index.js:958:32
-- [ ] Check video playback support before uploading to OPFS or first stream a chunk of video to OPFS and then check video support from OPFS.
+- [x] Check video playback support before uploading to OPFS or first stream a chunk of video to OPFS and then check video support from OPFS.
 - [x] Decide what to do if there are more than the already uploaded video count for a profile when decreasing video count size (e.g. from 4 videos to 2 videos).
 - [ ] Add video player settings support (e.g. player controls visibility).
 - [x] Warn the user if there are already videos in the profile when deleting the profile.
-- [ ] Finish adding seperate poster functionality for a video.
+- [x] Finish adding seperate poster functionality for a video.
 - [x] Change style for the video and poster upload rows for aesthetics.
 - [ ] PWA (installable, full screen, offline functionality etc.)
-- [ ] Make video title editable by the user
+- [x] Make video title editable by the user
 - [x] Show an indicator while a video is uploading to OPFS
 - [x] There is a problem when uploading more than one video simultaneously. For example when a video is large it takes some time to upload it and I try to upload another video. This causes a problem. Look into it. -- Added some code. Seems ok for now.
