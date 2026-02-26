@@ -1091,6 +1091,8 @@ function renderSourceSelectors() {
 		videoUploadInput.addEventListener("change", async (e) => {
 			const input = e.target;
 			videoIndicator.style.backgroundImage = `url(${sourceIsUploadingIndicatorPath})`;
+			// Change clear button text to "İptal" (Cancel) during upload
+			clearRowBtn.textContent = "İptal";
 
 			// Disable the input and label before any long-running async operations
 			// This prevents user from re-opening file picker during thumbnail generation or OPFS copy
@@ -1218,10 +1220,6 @@ function renderSourceSelectors() {
 					storageInfo();
 				}
 			}
-
-
-			// Change clear button text to "İptal" (Cancel) during upload
-			clearRowBtn.textContent = "İptal";
 
 			let thumbnailFileHandle = null;
 			const videoUrl = URL.createObjectURL(file);
@@ -1446,8 +1444,21 @@ function renderSourceSelectors() {
 			}
 
 			if (video.src && video.src.startsWith('blob:')) {
+				const confirmationMessage = `
+					<ul>
+						<li>${video.displayTitle}</li>
+					</ul>
+					adlı video tarayıcı hafızasından kalıcı olarak silinecek. <strong>Bu işlem geri alınamaz.</strong><br><br>Devam etmek istediğinize emin misiniz?
+				`;
+				const confirmed = await showConfirmModal("Dikkat", confirmationMessage, "Sil");
+				if (!confirmed) {
+					return;
+				}
 				URL.revokeObjectURL(video.src);
 			}
+			// if (video.src && video.src.startsWith('blob:')) {
+			// 	URL.revokeObjectURL(video.src);
+			// }
 			if (video.poster && video.poster.startsWith('blob:')) {
 				URL.revokeObjectURL(video.poster);
 			}
@@ -1457,12 +1468,14 @@ function renderSourceSelectors() {
 					storageInfo();
 				}).catch(err => {
 					console.error("Error removing video file from OPFS: ", err);
+					alert("Videoyu silerken bir hata oluştu");
 				});
 			}
 			if (butlerVideosDirectoryHandle && currentProfile.opfsProfileDirectoryHandle && video.posterTitle) {
 				currentProfile.opfsProfileDirectoryHandle.removeEntry(video.posterTitle).then(() => {
 				}).catch(err => {
 					console.error("Error removing thumbnail file from OPFS: ", err);
+					alert("Video posterini silerken bir hata oluştu");
 				});
 			}
 			video.storedFileName = "";
@@ -1985,9 +1998,9 @@ function initSettingsPanelInputs() {
 					: checkbox.checked = false; 
 				break;
 			case "time":
-				(state.player_settings.controlBarChildrenState.time &&
-				state.player_settings.controlBarChildrenState.timeDividertime &&
-				state.player_settings.controlBarChildrenState.durationtime)
+				(state.player_settings.controlBarChildrenState.duration&&
+				state.player_settings.controlBarChildrenState.timeDivider &&
+				state.player_settings.controlBarChildrenState.time)
 					? checkbox.checked = true
 					: checkbox.checked = false; 
 				break;
