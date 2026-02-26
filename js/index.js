@@ -12,7 +12,8 @@ const closeSettingsBtns = document.querySelectorAll(".close-settings-btn");
 const videoSettingsBtn = document.getElementById("video-settings-panel-tab-btn");
 const closeBtns = document.querySelectorAll(".close-btn");
 const videoCountSelector = document.getElementById("video-count-selector");
-const videoListGrid = document.querySelector(".video-list-grid");
+// const videoListGrid = document.querySelector(".video-list-grid");
+const videoListGrid = document.getElementById("video-players");
 const videoSettingsPanel = document.getElementById("video-settings-panel");
 const profileSettingsPanel = document.getElementById("profile-settings-panel");	
 const profileSelect = document.getElementById("profile-select");
@@ -23,6 +24,7 @@ const profileNameInput = document.getElementById("profile-name-input");
 const removeProfileBtn = document.getElementById("remove-profile-btn");
 const removeAllProfilesBtn = document.getElementById("remove-all-profiles-btn");
 const videoCountValues = [1, 2, 4];
+const settingsCheckBoxes = document.querySelectorAll("#settings-panel-container input[type='checkbox']");
 
 let DEBUGGING = true;
 
@@ -49,6 +51,8 @@ const emojiMap = {
 	present: "✅",
 	save: "💾",
 	edit: "✏️",
+	cancel: "✕",
+	cancel2: "✖️",
 };
 
 // Video Upload Elements
@@ -69,7 +73,8 @@ const state = {
 				{
 					id: 0,
 					name: "Varsayılan",
-					opfsProfileDirectoryHandle: "",
+					displayName: "Varsayılan",
+					opfsProfileDirectoryHandle: null,
 					videoCount: 1,
 					videos: [
 						{
@@ -87,11 +92,14 @@ const state = {
 				}
 			],
 	get profileNames() {
-		return this.profiles.map(p => p.name);
+		return this.profiles.map(p => ({id: p.id, name: p.name, displayName: p.displayName}));
 	},
 	currentProfileId: localStorage.getItem("currentProfileId") ?
 		JSON.parse(localStorage.getItem("currentProfileId")) :
 		0,
+	profileIdCounter: localStorage.getItem("profileIdCounter") ?
+		JSON.parse(localStorage.getItem("profileIdCounter")) :
+		1,
 	currentlyPlayingVideoId: null,
 	currentVolume: localStorage.getItem("currentVolume") ? 
 		JSON.parse(localStorage.getItem("currentVolume")) :
@@ -99,11 +107,35 @@ const state = {
 	player_settings: {
 		THUMBNAIL_GENERATION_TIME: localStorage.getItem("THUMBNAIL_GENERATION_TIME") ?
 			JSON.parse(localStorage.getItem("THUMBNAIL_GENERATION_TIME")) :
-			10
+			10,
+		showVideoControls: localStorage.getItem("showVideoControls") ?
+			JSON.parse(localStorage.getItem("showVideoControls")) :
+			true,
+		controlBarChildrenState: localStorage.getItem("controlBarChildrenState") ?
+			JSON.parse(localStorage.getItem("controlBarChildrenState")) :
+			{
+				"play": true,
+				"progress": true,
+				"volume": true,
+				"time": true,
+				"timeDivider": true,
+				"duration": true,
+				// "remaining": false,
+				// "rate": false,
+				// "pip": false,
+				"fullscreen": true,
+			},
+		playbackSettings: localStorage.getItem("playbackSettings") ?
+			JSON.parse(localStorage.getItem("playbackSettings")) :
+			{
+				rememberVolumeLevel: true,
+				rememberVideoTime: true,
+				touchControlsEnabled: true,
+			}
 	},
 	uiSettings: {
-		showOverlay: localStorage.getItem("showOverlay") ?
-			JSON.parse(localStorage.getItem("showOverlay")) :
+		showOverlays: localStorage.getItem("showOverlays") ?
+			JSON.parse(localStorage.getItem("showOverlays")) :
 			true,
 	}
 }
@@ -112,8 +144,6 @@ const state = {
 const supportsFS = 'showOpenFilePicker' in window;
 /* Check for OPFS support */
 const supportsOPFS = 'storage' in navigator && 'getDirectory' in navigator.storage;
-// console.log("File System Access API supported: ", supportsFS);
-// console.log("OPFS supported: ", supportsOPFS);
 if (!supportsFS && !supportsOPFS) {
 	alert("Bu tarayıcı Dosya Sistemi Erişim API'sini ve OPFS'yi desteklemiyor. Lütfen uyumlu bir tarayıcı kullanın (örneğin, Chrome 86+).");
 }
@@ -137,6 +167,7 @@ let opfsInitPromise = (async function getOpfsRoot(){
 	}
 	for (const profile of state.profiles) {
 		const opfsProfileDirectoryHandle  = await butlerVideosDirectoryHandle.getDirectoryHandle(profile.name, {create: true});
+		await cleanZeroByteFilesFromDirectory(opfsProfileDirectoryHandle);
 		profile.opfsProfileDirectoryHandle = opfsProfileDirectoryHandle;
 		for (video of profile.videos) {
 			if (video.storedFileName !== "") {
@@ -164,7 +195,6 @@ let opfsInitPromise = (async function getOpfsRoot(){
 						const opfsThumbnailFile = await thumbnailHandle.getFile();
 						video.poster = URL.createObjectURL(opfsThumbnailFile);
 						video.posterTitle = thumbnailHandle.name;
-						// console.log(video.poster);
 						// console.log(`Created object URL for thumbnail of ${video.storedFileName} in profile ${profile.name}: `, video.poster);
 					} catch (err) {
 						console.error("Could not create object URL from thumbnail handle:", err);
@@ -218,8 +248,6 @@ async function cacheVideoFileToOPFS(e) {
     // Read it later
     const file = await fileHandle.getFile();
 	const thumbnailFile = await thumbnailFileHandle.getFile();
-    // console.log(`File read from OPFS: ${file.name}, size: ${file.size} bytes, type: ${file.type}`);
-	// console.log(`Thumbnail file read from OPFS: ${thumbnailFile.name}, size: ${thumbnailFile.size} bytes, type: ${thumbnailFile.type}`);
     const url = URL.createObjectURL(file);
 	const thumbnailUrl = URL.createObjectURL(thumbnailFile);
     vp.src = url;
@@ -227,9 +255,16 @@ async function cacheVideoFileToOPFS(e) {
 }
 
 function saveState() {
-  localStorage.setItem("profiles", JSON.stringify(state.profiles));
-  localStorage.setItem("currentProfileId", state.currentProfileId);
-  localStorage.setItem("currentVolume", state.currentVolume);
+	localStorage.setItem("profiles", JSON.stringify(state.profiles));
+	localStorage.setItem("currentProfileId", JSON.stringify(state.currentProfileId));
+	localStorage.setItem("profileIdCounter", JSON.stringify(state.profileIdCounter));
+	localStorage.setItem("currentVolume", JSON.stringify(state.currentVolume));
+	localStorage.setItem("THUMBNAIL_GENERATION_TIME", JSON.stringify(state.player_settings.THUMBNAIL_GENERATION_TIME)),
+	localStorage.setItem("showVideoControls", JSON.stringify(state.player_settings.showVideoControls));
+	localStorage.setItem("controlBarChildrenState", JSON.stringify(state.player_settings.controlBarChildrenState));
+	localStorage.setItem("playbackSettings", JSON.stringify(state.player_settings.playbackSettings));
+	localStorage.setItem("showOverlays", JSON.stringify(state.uiSettings.showOverlays));
+	localStorage.setItem("videos", JSON.stringify(state.profiles[state.currentProfileId].videos));
 }
 
 /* Confirmation Modal Utility */
@@ -298,7 +333,6 @@ settingsBtn.addEventListener("click", () => {
 		return;
 	} else {
 		settingsPanelContainer.showModal();
-		// console.log("Modal is showed");
 		settingsBtn.style.display = "none";
 		clickCount = 0;
 	}
@@ -319,7 +353,7 @@ profileNameInput.addEventListener("keydown", (e) => {
 });
 
 addProfileBtn.addEventListener("click", async () => {
-	if (state.profileNames.includes(profileNameInput.value.trim())) {
+	if (state.profileNames.map(p => p.name).includes(profileNameInput.value.trim())) {
 		if (profileListContainer.querySelector("#duplicate-profile-alert")) {
 			return;
 		}
@@ -328,7 +362,6 @@ addProfileBtn.addEventListener("click", async () => {
 		alertDiv.role = "alert";
 		alertDiv.id = "duplicate-profile-alert";
 		alertDiv.textContent = "Bu isimde zaten bir profil var. Lütfen farklı bir isim girin.";
-		// console.log(addProfileSection);
 		addProfileSection.appendChild(alertDiv);
 		setTimeout(() => {
 			if (addProfileSection.contains(alertDiv)) {
@@ -337,10 +370,15 @@ addProfileBtn.addEventListener("click", async () => {
 		}, 3000);	
 		return;
 	}
+	// const newProfileId = state.profiles.length > 0 ? Math.max(...state.profiles.map(p => p.id)) + 1 : 0;
+	const newProfileId = state.profileIdCounter++;
+
 	const newProfile = {
-		id: state.profiles.length,
-		name: `${profileNameInput.value !== "" ? profileNameInput.value : `Profil ${state.profiles.length}`}`,
-		opfsProfileDirectoryHandle: await butlerVideosDirectoryHandle.getDirectoryHandle(`${profileNameInput.value !== "" ? profileNameInput.value : `Profil ${state.profiles.length}`}`, {create: true}),
+		// id: state.profiles.length,
+		id: newProfileId,
+		name: `${profileNameInput.value !== "" ? profileNameInput.value : `Profil ${newProfileId}`}`,
+		displayName: `${profileNameInput.value !== "" ? profileNameInput.value : `Profil ${newProfileId}`}`,
+		opfsProfileDirectoryHandle: await butlerVideosDirectoryHandle.getDirectoryHandle(`${profileNameInput.value !== "" ? profileNameInput.value : `Profil ${newProfileId}`}`, {create: true}),
 		videoCount: 1,
 		videos: [
 			{
@@ -357,17 +395,18 @@ addProfileBtn.addEventListener("click", async () => {
 		]
 	};
 	state.profiles.push(newProfile);
-	state.currentProfileId = newProfile.id;
+	state.currentProfileId = newProfileId;
 	saveState();
 	renderProfileSelectList();
 	renderProfileList();
 	renderSourceSelectors();
 	renderVideoCountSelector();
+	renderVideoList();
 });
 
 removeProfileBtn.addEventListener("click", async () => {
 	const checkboxes = profileListContainer.querySelectorAll("input[type='checkbox']:checked");
-	const idsToRemove = Array.from(checkboxes).map(checkbox => parseInt(checkbox.value)).filter(id => id !== 0 && state.profileNames[id] !== "Varsayılan");
+	const idsToRemove = Array.from(checkboxes).map(checkbox => parseInt(checkbox.value)).filter(id => id !== 0 && state.profileNames.find(p => p.id === id)?.name !== "Varsayılan");
 	if (idsToRemove.length === 0) {
 		if (profileListContainer.querySelector("#remove-profiles-alert")) {
 			return;
@@ -398,11 +437,9 @@ removeProfileBtn.addEventListener("click", async () => {
 				Bu profili silmek, bu videoların tarayıcı hafızasından kalıcı olarak silinmesine neden olacak. <strong>Bu işlem geri alınamaz.</strong><br><br>Devam etmek istediğinize emin misiniz?
 			`;
 			const confirmed = await showConfirmModal("Dikkat", confirmationMessage, "Sil");
-			console.log(confirmed);
 			if (!confirmed) {
 				const idx = idsToRemove.indexOf(profile.id);
 				if (idx !== -1) idsToRemove.splice(idx, 1);
-				console.log(idsToRemove);
 				continue;
 			}
 
@@ -414,14 +451,21 @@ removeProfileBtn.addEventListener("click", async () => {
 
 			if (butlerVideosDirectoryHandle && profile.opfsProfileDirectoryHandle) {
 				await butlerVideosDirectoryHandle.removeEntry(profile.opfsProfileDirectoryHandle.name, { recursive: true }).catch(() => {});
+				storageInfo();
+			}
+		} else {
+			if (butlerVideosDirectoryHandle && profile.opfsProfileDirectoryHandle) {
+				await butlerVideosDirectoryHandle.removeEntry(profile.opfsProfileDirectoryHandle.name, { recursive: true }).catch(() => {});
+				storageInfo();
 			}
 		}
 	}
-	storageInfo();
+	// storageInfo();
 	state.profiles = state.profiles.filter(profile => !idsToRemove.includes(profile.id));
-	if (state.currentProfileId >= state.profiles.length) {
-		state.currentProfileId = 0;
-	}
+	// if (state.currentProfileId >= state.profiles.length) {
+	// 	state.currentProfileId = 0;
+	// }
+	state.currentProfileId = 0; // switch to the first profile after deletion
 	saveState();
 	renderProfileSelectList();
 	renderProfileList();
@@ -458,7 +502,7 @@ removeAllProfilesBtn.addEventListener("click", async () => {
 	} else {
 		(async () => {
 			
-			const profilesToRemove = state.profiles.filter(profile => profile.id !== 0 || state.profileNames[profile.id] !== "Varsayılan");
+			const profilesToRemove = state.profiles.filter(profile => profile.id !== 0 && state.profileNames.find(p => p.id === profile.id)?.name !== "Varsayılan");
 			for (const profile of profilesToRemove) {
 				if (profile.videos && profile.videos.length > 0) {
 					for (const video of profile.videos) {
@@ -472,10 +516,11 @@ removeAllProfilesBtn.addEventListener("click", async () => {
 				}
 				if (butlerVideosDirectoryHandle && profile.opfsProfileDirectoryHandle) {
 					await butlerVideosDirectoryHandle.removeEntry(profile.opfsProfileDirectoryHandle.name, { recursive: true }).catch(() => {});
+					storageInfo();
 				}
 			}
 		})();
-		state.profiles = state.profiles.filter(profile => profile.id === 0 || state.profileNames[profile.id] === "Varsayılan");
+		state.profiles = state.profiles.filter(profile => profile.id === 0 || profile.name === "Varsayılan");
 		state.currentProfileId = 0;
 	}
 	
@@ -499,17 +544,37 @@ document.addEventListener("DOMContentLoaded", async () => {
 		loadingSpinner: true,
 		// userActions: {
 		// 	hotkeys: true,
+		//  click: false,
+		//  click: myClickHandler,
+		//  doubleClick: myDoubleClickHandler
 		// },
+		playbackRates: [], // ← disables PlaybackRateMenuButton entirely
 		controlBar: {
-			VolumePanel: {
-				inline: false
-			},
-			children: [
-				'PlayToggle',
-				'ProgressControl',
-				'VolumePanel',
-				'FullscreenToggle',
-			],
+			pictureInPictureToggle: false, // ← disables PiP completely
+			remainingTimeDisplay: false, // ← disables just the current time text
+			// VolumePanel: {
+			// 	inline: false
+			// },
+			// children: [
+			// 	'PlayToggle',
+			// 	'ProgressControl',
+			// 	// 'TimeDisplay',
+			// 	// 'CurrentTimeDisplay',
+			// 	// 'TimeDivider',
+			// 	// 'DurationDisplay',
+			// 	// 'RemainingTimeDisplay',
+			// 	'VolumePanel',
+			// 	'FullscreenToggle',
+			// 	// 'PlayToggle',
+			// 	// 'ProgressControl',
+			// 	// 'TimeDisplay',           // ← THIS is the correct component
+			// 	// 'RemainingTimeDisplay',  // optional
+			// 	// 'VolumePanel',
+			// 	// 'FullscreenToggle',
+			// ],
+			// skipButtons: {
+			// 	forward: 5
+			// },
 		},
 		// userActions: {
 		// 	hotkeys: function(event) {
@@ -535,20 +600,24 @@ document.addEventListener("DOMContentLoaded", async () => {
 			},
 		},
 	});
+	vp.on('loadedmetadata', applyVideoControlBarState);
+	vp.on('componentresize', applyVideoControlBarState);
+	vp.on('loadstart', applyVideoControlBarState);
 	vp.mobileUi({
 		fullscreen: {
 			enterOnRotate: true,
 			exitOnRotate: false,
 			lockOnRotate: false,
 			lockToLandscapeOnEnter: false,
-			disabled: false
+			disabled: false,
 		},
 		touchControls: {
 			seekSeconds: 10,
 			tapTimeout: 300,
 			disableOnEnd: false,
-			disabled: false,
-		}
+			disabled: !state.player_settings.playbackSettings.touchControlsEnabled,
+		},
+		forceForTesting: true,
 	});
 
 	vp.on("volumechange", () => {
@@ -562,7 +631,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 		}
 		vp.pause();
 		vp.currentTime(0);
-		vp.volume(state.currentVolume);
+		vp.volume(state.player_settings.playbackSettings.rememberVolumeLevel ? state.currentVolume : 0.8);
 		document.getElementById('vp').style.display = 'none';
 	});
 
@@ -573,15 +642,80 @@ document.addEventListener("DOMContentLoaded", async () => {
 		}
 	});
 
+	const controlBar = vp.getChild('ControlBar');
+
+	const controls = {
+		play: controlBar.getChild('PlayToggle'),
+		progress: controlBar.getChild('ProgressControl'),
+		volume: controlBar.getChild('VolumePanel'),
+		time: controlBar.getChild('CurrentTimeDisplay'),
+		timeDivider: controlBar.getChild('TimeDivider'),
+		duration: controlBar.getChild('DurationDisplay'),
+		// remaining: controlBar.getChild('RemainingTimeDisplay'),
+		// rate: controlBar.getChild('PlaybackRateMenuButton'),
+		// pip: controlBar.getChild('PictureInPictureToggle'),
+		fullscreen: controlBar.getChild('FullscreenToggle'),
+	};
+
+	initSettingsPanelInputs();
+
+	settingsCheckBoxes.forEach(checkbox => {
+		const key = checkbox.dataset.key;
+		checkbox.addEventListener("change", (e) => {
+			if (key) {
+				switch(key) {
+					case "showVideoControls":
+						e.target.checked ? vp.controlBar.show() : vp.controlBar.hide();
+						state.player_settings.showVideoControls = e.target.checked;
+						break;
+					case "rememberVolumeLevel":
+						state.player_settings.playbackSettings.rememberVolumeLevel = e.target.checked;
+						break;
+					case "rememberVideoTime":
+						state.player_settings.playbackSettings.rememberVideoTime = e.target.checked;
+						break;
+					case "showVideoTitles":
+						state.uiSettings.showOverlays = e.target.checked;
+						updateOverlayDisplay(e.target.checked);
+						break;
+					case "time":
+						state.player_settings.controlBarChildrenState.time = e.target.checked;
+						controls.time ? (e.target.checked ? controls.time.show() : controls.time.hide()) : null;
+						state.player_settings.controlBarChildrenState.timeDivider = e.target.checked;
+						controls.timeDivider ? (e.target.checked ? controls.timeDivider.show() : controls.timeDivider.hide()) : null;
+						state.player_settings.controlBarChildrenState.duration = e.target.checked;
+						controls.duration ? (e.target.checked ? controls.duration.show() : controls.duration.hide()) : null;
+						break;
+					case "touchControlsEnabled":
+						const enabled = e.target.checked;
+						state.player_settings.playbackSettings.touchControlsEnabled = enabled;
+						initPlayer(enabled);
+						// setTouchControls(enabled);
+						// vp.mobileUi().options_.touchControls.disabled = !enabled;
+						break;
+					default:
+						state.player_settings.controlBarChildrenState[key] = e.target.checked;
+						controls[key] ? (e.target.checked ? controls[key].show() : controls[key].hide()) : null;
+						break;
+				}
+				saveState();
+			}
+			// TODO: implement the following funnctions to apply the changes immediately when a setting is toggled, instead of waiting for the user to close the settings dialog:
+			// applyControlState();
+		});
+	});
+
+
 	videoCountSelector.value = state.videoCount;
-	if (state.profiles[state.currentProfileId].videos.length === 0 || state.profiles[state.currentProfileId].videos.length !== state.profiles[state.currentProfileId].videos.videoCount) {
+	const currentProfile = state.profiles.find(p => p.id === state.currentProfileId);
+	if (currentProfile && (currentProfile.videos.length === 0 || currentProfile.videos.length !== currentProfile.videoCount)) {
 		updateVideoList();
 	}
 	videoCountSelector.addEventListener("change", async (e) => {
 		const count = parseInt(e.target.value);
 		if (!videoCountValues.includes(count)) return;
 
-		const currentProfile = state.profiles[state.currentProfileId];
+		const currentProfile = state.profiles.find(p => p.id === state.currentProfileId);
 		const oldCount = currentProfile.videoCount || 1;
 		if (count === oldCount) return;
 
@@ -593,7 +727,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 			const toDelete = videosWithSource.slice(count);
 
 			if (toDelete.length > 0) {
-				const names = toDelete.map(v => v.title || `Slot ${v.id + 1}`).join('<br>');
+				const names = toDelete.map(v => v.displayTitle || `Slot ${v.id + 1}`).join('<br>');
 				const prefix1 = oldCount === 2 ? "den" : "ten";
 				const prefix2 = count === 1 ? "e" : "ye";
 				const message = `
@@ -671,7 +805,7 @@ function renderProfileSelectList() {
 	for (const profile of state.profiles) {
 		const option = document.createElement("option");
 		option.value = profile.id;
-		option.textContent = profile.name;
+		option.textContent = profile.displayName || profile.name;
 		if (profile.id === state.currentProfileId) {
 			option.selected = true;
 		} else if (state.profiles.length === 1) {
@@ -720,42 +854,110 @@ function renderProfileList() {
 	selectAllLi.appendChild(selectAllLabel);
 	profileListContainer.appendChild(selectAllLi);
 
-	for (const [id, profile] of state.profileNames.entries()) {
+	for (const profile of state.profileNames) {
 		const li = document.createElement("li");
 		li.className = "profile-list-item";
 
 		const checkBox = document.createElement("input");
 		checkBox.className = "form-check-input";
 		checkBox.type = "checkbox";
-		checkBox.name = `profile_${id}_select`;
-		checkBox.id = `profile_${id}_select`;
-		checkBox.value = id;
+		checkBox.name = `profile_${profile.id}_select`;
+		checkBox.id = `profile_${profile.id}_select`;
+		checkBox.value = profile.id;
 
-		if (id === 0 || profile === "Varsayılan") {
+		if (profile.id === 0 || profile.name === "Varsayılan") {
 			checkBox.disabled = true;
 		}
 
 		const label = document.createElement("label");
 		label.className = "form-check-label";
-		label.htmlFor = `profile_${id}_select`;
-		label.textContent = profile;
+		label.htmlFor = `profile_${profile.id}_select`;
+		label.textContent = profile.displayName;
 
 		li.appendChild(checkBox);
 		li.appendChild(label);
 
+		label.addEventListener("focusout", () => {
+			if (label.textContent.trim() === "") {
+				label.textContent = profile.displayName;
+			}
+		});
+
+		if (profile.id !== 0 && profile.name !== "Varsayılan") {
+			const editProfileNameBtn = document.createElement("button");
+			editProfileNameBtn.type = "button";
+			editProfileNameBtn.className = "btn btn-sm btn-secondary edit-profile-name-btn settings-btn";
+			editProfileNameBtn.textContent = emojiMap.edit;
+			editProfileNameBtn.addEventListener("click", () => {
+				label.contentEditable = true;
+				label.focus();
+				checkBox.disabled = true;
+				checkBox.style.cursor = "none";
+				// label.style.color = "#81ff76";
+				label.style.color = "#fcf810";
+				label.style.opacity = "1";
+				label.style.border = "1px dashed #fcf810";
+				label.style.cursor = "text";
+				// select text content				
+				const range = document.createRange();
+				range.selectNodeContents(label);
+				const sel = window.getSelection();
+				sel.removeAllRanges();
+				sel.addRange(range);
+			});
+
+			const saveProfileNameBtn = document.createElement("button");
+			saveProfileNameBtn.type = "button";
+			saveProfileNameBtn.className = "btn btn-sm btn-secondary save-profile-name-btn settings-btn";
+			saveProfileNameBtn.innerHTML = emojiMap.save;
+
+			saveProfileNameBtn.addEventListener("click", () => {
+				label.contentEditable = false;
+				label.style.border = "none";
+				label.style.cursor = "pointer";
+				const currentProfile = state.profiles.find(p => p.id === profile.id);
+				currentProfile.displayName = label.textContent.trim();
+				checkBox.disabled = false;
+				checkBox.style.cursor = "pointer";
+
+				saveState();
+				renderProfileList();
+				renderProfileSelectList()
+			});
+
+			const cancelEditBtn = document.createElement("button");
+			cancelEditBtn.type = "button";
+			cancelEditBtn.className = "btn btn-sm btn-secondary cancel-edit-profile-name-btn settings-btn";
+			cancelEditBtn.textContent = emojiMap.cancel;
+			cancelEditBtn.addEventListener("click", () => {
+				label.contentEditable = false;
+				label.style.border = "none";
+				label.style.cursor = "pointer";
+				label.style.color = "";
+				label.textContent = profile.displayName;
+				checkBox.disabled = false;
+				checkBox.style.cursor = "pointer";
+			});
+			
+			li.appendChild(editProfileNameBtn);
+			li.appendChild(saveProfileNameBtn);
+			li.appendChild(cancelEditBtn);
+
+		}
 		profileListContainer.appendChild(li);
 	}
 }
 
 function renderVideoCountSelector() {
+	const currentProfile = state.profiles.find(p => p.id === state.currentProfileId);
 	videoCountSelector.innerHTML = "";
 	for (const count of videoCountValues) {
 		const option = document.createElement("option");
 		option.value = count;
 		option.textContent = `${count} Video`;
-		if (count === state.profiles[state.currentProfileId].videoCount) {
+		if (count === currentProfile.videoCount) {
 			option.selected = true;
-		} else if (state.profiles[state.currentProfileId].videoCount === undefined && count === 1) {
+		} else if (currentProfile.videoCount === undefined && count === 1) {
 			option.selected = true;
 		}
 		videoCountSelector.appendChild(option);
@@ -763,7 +965,7 @@ function renderVideoCountSelector() {
 };
 
 function renderSourceSelectors() {
-	const currentProfile = state.profiles[state.currentProfileId];
+	const currentProfile = state.profiles.find(p => p.id === state.currentProfileId);
 	sourceSelectorSection.innerHTML = "";
 	// Header Row
 	const headerRow = document.createElement("div");
@@ -888,7 +1090,24 @@ function renderSourceSelectors() {
 		
 		videoUploadInput.addEventListener("change", async (e) => {
 			const input = e.target;
+			videoIndicator.style.backgroundImage = `url(${sourceIsUploadingIndicatorPath})`;
+
+			// Disable the input and label before any long-running async operations
+			// This prevents user from re-opening file picker during thumbnail generation or OPFS copy
+			input.disabled = true;
+			videoLabel.style.pointerEvents = "none";
+			videoLabel.style.opacity = "0.5";
+			videoLabel.style.cursor = "not-allowed";
+
+			// Also disable poster upload input and fade it out
+			posterUploadInput.disabled = true;
+			posterLabel.style.pointerEvents = "none";
+			posterLabel.style.opacity = "0.5";
+			posterLabel.style.cursor = "not-allowed";
+
+			
 			const file = input.files ? input.files[0] : null;
+			
 			// const videoPosterImages = document.querySelectorAll(".video-poster-img");
 
 			// const videoTestElement = document.createElement('video');
@@ -901,6 +1120,7 @@ function renderSourceSelectors() {
 			const fileSizeGB = file.size / (1024 * 1024 * 1024);
 
 			const shouldUpload = await shouldUploadVideo(file);
+			
 			if(!shouldUpload.supported) {
 				alert(shouldUpload.reason);
 				input.value = "";
@@ -913,7 +1133,6 @@ function renderSourceSelectors() {
 					return;
 				}
 			}
-
 			if (video.src && video.src.startsWith('blob:')) {
 				URL.revokeObjectURL(video.src);
 				if (butlerVideosDirectoryHandle && currentProfile.opfsProfileDirectoryHandle && video.storedFileName) {
@@ -924,6 +1143,7 @@ function renderSourceSelectors() {
 					});
 				}
 			}
+
 			if (video.poster && video.poster.startsWith('blob:')) {
 				URL.revokeObjectURL(video.poster);
 				if (butlerVideosDirectoryHandle && currentProfile.opfsProfileDirectoryHandle && video.posterTitle) {
@@ -936,11 +1156,19 @@ function renderSourceSelectors() {
 			}
 
 			queuedOPFSOperationsCount++;
-
-			videoIndicator.style.backgroundImage = `url(${sourceIsUploadingIndicatorPath})`;
-
-			const isFilePresentInOPFS = await currentProfile.opfsProfileDirectoryHandle.getFileHandle(file.name).then(() => true).catch(() => false);
-			if (isFilePresentInOPFS) {
+			
+			let checkedFile = null;
+			try {
+				const handle = await currentProfile.opfsProfileDirectoryHandle.getFileHandle(file.name);
+				checkedFile = await handle.getFile();
+			} catch(error) {
+				if (error.name === 'NotFoundError') {
+					checkedFile = null;
+				}
+			}
+				
+			// const isFilePresentInOPFS = await currentProfile.opfsProfileDirectoryHandle.getFileHandle(file.name).then(() => true).catch(() => false);
+			if (checkedFile && checkedFile.size === file.size && checkedFile.name === file.name) {
 				videoIndicator.style.backgroundImage = "none";
 				if (sourceSelectorSection.querySelector("#duplicate-file-alert")) {
 					input.value = "";
@@ -970,21 +1198,27 @@ function renderSourceSelectors() {
 				}, 5000);
 				input.value = "";
 				queuedOPFSOperationsCount--;
+
+				// Reenable input and label since we're not proceeding with the upload
+				input.disabled = false;
+				videoLabel.style.pointerEvents = "";
+				videoLabel.style.opacity = "";
+				videoLabel.style.cursor = "";
+
+				// Also re-enable poster upload input and fade it out
+				posterUploadInput.disabled = false;
+				posterLabel.style.pointerEvents = "";
+				posterLabel.style.opacity = "";
+				posterLabel.style.cursor = "";
 				return;
+			} else {
+				// If file with same name exists but size or name doesn't match, remove it and proceed with the new upload
+				if (checkedFile) {
+					await currentProfile.opfsProfileDirectoryHandle.removeEntry(file.name).catch(() => {});
+					storageInfo();
+				}
 			}
 
-			// Disable the input and label before any long-running async operations
-			// This prevents user from re-opening file picker during thumbnail generation or OPFS copy
-			input.disabled = true;
-			videoLabel.style.pointerEvents = "none";
-			videoLabel.style.opacity = "0.5";
-			videoLabel.style.cursor = "not-allowed";
-
-			// Also disable poster upload input and fade it out
-			posterUploadInput.disabled = true;
-			posterLabel.style.pointerEvents = "none";
-			posterLabel.style.opacity = "0.5";
-			posterLabel.style.cursor = "not-allowed";
 
 			// Change clear button text to "İptal" (Cancel) during upload
 			clearRowBtn.textContent = "İptal";
@@ -1048,6 +1282,7 @@ function renderSourceSelectors() {
 				uploadError = true;
 				if (err.name === 'AbortError') {
 					console.log('Upload cancelled');
+					alert("Yüleme iptal edildi.");
 				} else {
 					console.error(err);
 				}
@@ -1226,7 +1461,6 @@ function renderSourceSelectors() {
 			}
 			if (butlerVideosDirectoryHandle && currentProfile.opfsProfileDirectoryHandle && video.posterTitle) {
 				currentProfile.opfsProfileDirectoryHandle.removeEntry(video.posterTitle).then(() => {
-					// console.log("Thumbnail file removed from OPFS.");
 				}).catch(err => {
 					console.error("Error removing thumbnail file from OPFS: ", err);
 				});
@@ -1241,7 +1475,6 @@ function renderSourceSelectors() {
 			video.size = 0;
 			updateVideoList();
 			saveState();
-			// console.log("VIDEOS ==========> ", state.profiles[state.currentProfileId].videos);
 			renderSourceSelectors();
 			renderVideoList();
 		});
@@ -1304,7 +1537,6 @@ function renderSourceSelectors() {
 			videoTitleEditingButtonContainer.appendChild(returnToDefaultTitle);
 
 			editTitleBtn.addEventListener("click", () => {
-				console.log(video);
 				videoTitle.contentEditable = true;
 				videoTitle.focus();
 				videoTitle.classList.add("editing");
@@ -1312,14 +1544,17 @@ function renderSourceSelectors() {
 				saveTitleBtn.disabled = false;
 				cancelEditBtn.disabled = false;
 				// Move cursor to end of text
-				document.execCommand('selectAll', false, null);
-				document.getSelection().collapseToEnd();
+				// select text content				
+				const range = document.createRange();
+				range.selectNodeContents(videoTitle);
+				const sel = window.getSelection();
+				sel.removeAllRanges();
+				sel.addRange(range);
+				// document.getSelection().collapseToEnd();
 			});
 
 			saveTitleBtn.addEventListener("click", () => {
-				console.log(video);
 				const newTitle = videoTitle.textContent.trim();
-				console.log("New title:", newTitle);
 				video.displayTitle = newTitle;
 				saveTitleBtn.disabled = true;
 				editTitleBtn.disabled = false;
@@ -1392,9 +1627,10 @@ function renderSourceSelectors() {
 }
 
 function createDefaultVideoList() {
-	state.profiles[state.currentProfileId].videos = [];
-	for (let i = 0; i < state.profiles[state.currentProfileId].videoCount; i++) {
-		state.profiles[state.currentProfileId].videos[i] = {
+	const currentProfile = state.profiles.find(p => p.id === state.currentProfileId);
+	currentProfile.videos = [];
+	for (let i = 0; i < currentProfile.videoCount; i++) {
+		currentProfile.videos[i] = {
 			id: i,
 			storedFileName: "",
 			src: "",
@@ -1408,7 +1644,7 @@ function createDefaultVideoList() {
 }
 
 function updateVideoList() {
-	const currentProfile = state.profiles[state.currentProfileId];
+	const currentProfile = state.profiles.find(p => p.id === state.currentProfileId);
 	const videoCount = currentProfile.videoCount || 1;
 	const existing = Array.isArray(currentProfile.videos) ? currentProfile.videos.slice() : [];
 
@@ -1435,21 +1671,22 @@ function updateVideoList() {
 		}
 	}
 
-	state.profiles[state.currentProfileId].videos = newList;
-	localStorage.setItem("videos", JSON.stringify(state.profiles[state.currentProfileId].videos));
+	currentProfile.videos = newList;
+	localStorage.setItem("videos", JSON.stringify(currentProfile.videos));
 }
 
 // window.addEventListener("orientationchange", function() {
 // 	fitThumbnailsInViewport();
 // }, false);
 
-window.addEventListener('resize', () => fitThumbnailsInViewport(state.profiles[state.currentProfileId].videoCount));
+window.addEventListener('resize', () => fitThumbnailsInViewport(state.profiles.find(p => p.id === state.currentProfileId).videoCount));
 
 async function renderVideoList() {
+	const currentProfile = state.profiles.find(p => p.id === state.currentProfileId);
 	videoListGrid.innerHTML = "";
-	videoListGrid.className = `video-list-grid count-${state.profiles[state.currentProfileId].videoCount}`;
+	videoListGrid.className = `video-list-grid count-${currentProfile.videoCount}`;
 	
-	for (const video of state.profiles[state.currentProfileId].videos) {
+	for (const video of currentProfile.videos) {
 		const videoListItem = document.createElement("div");
 		videoListItem.className = "video-list-item";
 		const img = document.createElement("img");
@@ -1497,8 +1734,12 @@ async function renderVideoList() {
 				// overlay.textContent = `Video ${video.id + 1}`;
 				overlay.textContent = "";
 			}
-			if (state.uiSettings.showOverlay && video.displayTitle && video.displayTitle !== "") {
-				videoListItem.appendChild(overlay);
+		
+			videoListItem.appendChild(overlay);
+			if (state.uiSettings.showOverlays && video.displayTitle && video.displayTitle !== "") {
+				overlay.style.display = 'block';
+			} else {
+				overlay.style.display = 'none';
 			}
 		} else {
 			const emptyText = document.createElement("div");
@@ -1520,21 +1761,20 @@ async function renderVideoList() {
 			vp.src({ src: videoUrl, type: 'video/mp4'});
 			openFullscreen(vp);
 			state.currentlyPlayingVideoId = video.id;
-			vp.volume(state.currentVolume);
+			vp.volume(state.player_settings.playbackSettings.rememberVolumeLevel ? state.currentVolume : 0.8);
 			saveState();
 			vp.play();
 		});
 		videoListGrid.appendChild(videoListItem);
 	}
 	const videoPosterImages = document.querySelectorAll(".video-poster-img");
-	for (const [i, video] of state.profiles[state.currentProfileId].videos.entries()) {
+	for (const [i, video] of currentProfile.videos.entries()) {
 		const imgEl = videoPosterImages[i];
 		// if DOM <img> for this slot doesn't exist, skip safely
 		if (!imgEl) continue;
 
 		if (video.src && video.src !== "") {
 			if (video.poster && video.poster !== "" && video.posterTitle) {
-				const currentProfile = state.profiles[state.currentProfileId];
 				const profileDirectoryHandle = currentProfile.opfsProfileDirectoryHandle;
 				if (!profileDirectoryHandle || typeof profileDirectoryHandle !== 'object') {
 					imgEl.src = "./img/placeholder.svg";
@@ -1574,7 +1814,7 @@ async function renderVideoList() {
 		}
 	}
 
-	fitThumbnailsInViewport(state.profiles[state.currentProfileId].videos.length);
+	fitThumbnailsInViewport(currentProfile.videos.length);
 }
 
 function generateThumbnail(videoSrc) {
@@ -1586,7 +1826,6 @@ function generateThumbnail(videoSrc) {
 		video.addEventListener('loadeddata', () => {
 			video.currentTime = state.player_settings.THUMBNAIL_GENERATION_TIME; // Capture thumbnail at nth second
 		});
-		console.log(video);
 		
 		try {
 			video.addEventListener('seeked', () => {
@@ -1721,8 +1960,245 @@ function isMobileDevice() {
 //   }
 // }
 
+function initSettingsPanelInputs() {
+	settingsCheckBoxes.forEach(checkbox => {
+		const datasetKey = checkbox.dataset.key;
+		switch(datasetKey) {
+			case "showVideoControls":
+				state.player_settings.showVideoControls 
+					? checkbox.checked = true
+					: checkbox.checked = false; 
+				break;
+			case "rememberVolumeLevel":
+				state.player_settings.playbackSettings.rememberVolumeLevel
+					? checkbox.checked = true
+					: checkbox.checked = false; 
+				break;
+			case "rememberVideoTime":
+				state.player_settings.playbackSettings.rememberVideoTime
+					? checkbox.checked = true
+					: checkbox.checked = false; 
+				break;
+			case "showVideoTitles":
+				state.uiSettings.showOverlays
+					? checkbox.checked = true
+					: checkbox.checked = false; 
+				break;
+			case "time":
+				(state.player_settings.controlBarChildrenState.time &&
+				state.player_settings.controlBarChildrenState.timeDividertime &&
+				state.player_settings.controlBarChildrenState.durationtime)
+					? checkbox.checked = true
+					: checkbox.checked = false; 
+				break;
+			case "touchControlsEnabled":
+				console.log("touchControlsEnabled", state.player_settings.playbackSettings.touchControlsEnabled);
+				state.player_settings.playbackSettings.touchControlsEnabled
+					? checkbox.checked = true
+					: checkbox.checked = false;
+				break;
+			default:
+				state.player_settings.controlBarChildrenState[datasetKey]
+					? checkbox.checked = true
+					: checkbox.checked = false; 
+				break;
+		}
+	});
+}
+
+function updateOverlayDisplay() {
+	const videoListGrid = document.getElementById('video-players');
+	videoListGrid.querySelectorAll('.video-title-overlay').forEach(overlay => {
+
+		if (state.uiSettings.showOverlays) {
+			if (overlay.textContent && overlay.textContent.trim() !== "") {
+				overlay.style.display = 'block';
+			} else {
+				overlay.style.display = 'none';
+			}
+		} else {
+			overlay.style.display = 'none';
+		}
+	});	
+}
+
+function initPlayer(touchEnabled) {
+	if (vp) {
+		vp.dispose();
+	}
+
+	  // Remove old video element if still present
+	const oldVideo = document.getElementById("vp");
+	if (oldVideo) {
+		oldVideo.remove();
+	}
+
+	const videoEl = document.createElement("video");
+	videoEl.id = "vp";
+	videoEl.className = "video-js vjs-default-skin";
+	videoEl.innerHTML = `
+		<p class="vjs-no-js vjs-fluid">
+          To view this video please enable JavaScript, and consider upgrading to a
+          web browser that
+          <a href="https://videojs.com/html5-video-support/" target="_blank">
+            supports HTML5 video
+          </a>
+        </p>
+	`;
+	videoListGrid.insertAdjacentElement("afterend", videoEl);
+
+	vp = videojs(videoEl, {
+		controls: true,
+		fluid: true,
+		autoplay: false,
+		preload: 'auto',
+		loadingSpinner: true,
+		// userActions: {
+		// 	hotkeys: true,
+		//  click: false,
+		//  click: myClickHandler,
+		//  doubleClick: myDoubleClickHandler
+		// },
+		playbackRates: [], // ← disables PlaybackRateMenuButton entirely
+		controlBar: {
+			pictureInPictureToggle: false, // ← disables PiP completely
+			remainingTimeDisplay: false, // ← disables just the current time text
+			// VolumePanel: {
+			// 	inline: false
+			// },
+			// children: [
+			// 	'PlayToggle',
+			// 	'ProgressControl',
+			// 	// 'TimeDisplay',
+			// 	// 'CurrentTimeDisplay',
+			// 	// 'TimeDivider',
+			// 	// 'DurationDisplay',
+			// 	// 'RemainingTimeDisplay',
+			// 	'VolumePanel',
+			// 	'FullscreenToggle',
+			// 	// 'PlayToggle',
+			// 	// 'ProgressControl',
+			// 	// 'TimeDisplay',           // ← THIS is the correct component
+			// 	// 'RemainingTimeDisplay',  // optional
+			// 	// 'VolumePanel',
+			// 	// 'FullscreenToggle',
+			// ],
+			// skipButtons: {
+			// 	forward: 5
+			// },
+		},
+		// userActions: {
+		// 	hotkeys: function(event) {
+		// 		// `this` is the player in this context
+
+		// 		// `x` key = pause
+		// 		if (event.which === 88) {
+		// 			this.pause();
+		// 		}
+		// 		// `y` key = play
+		// 		if (event.which === 89) {
+		// 			this.play();
+		// 		}
+		// 	}
+		// },
+		plugins: {
+			hotkeys: {
+				volumeStep: 0.05,
+				seekStep: 5,
+				// enableModifiersForNumbers: false,
+				// enableFullscreen: false,
+				// enableMute: true,
+			},
+		},
+	});
+
+	vp.mobileUi({
+		fullscreen: {
+			enterOnRotate: true,
+			exitOnRotate: false,
+			lockOnRotate: false,
+			lockToLandscapeOnEnter: false,
+			disabled: false,
+		},
+		touchControls: {
+			seekSeconds: 10,
+			tapTimeout: 300,
+			disableOnEnd: false,
+			disabled: !touchEnabled,
+		},
+		forceForTesting: true,
+	});
+
+	applyVideoControlBarState();
+}
+
+function setTouchControls(enabled) {
+  if (enabled) {
+    vp.addClass('vjs-mobile-ui');
+  } else {
+    vp.removeClass('vjs-mobile-ui');
+  }
+}
+
+function rebuildMobileUi(enabled) {
+	if (vp.mobileUi) {
+	// remove existing mobile UI listeners
+		vp.mobileUi()?.dispose?.();
+	}
+
+	vp.mobileUi({
+		fullscreen: {
+			enterOnRotate: true,
+			exitOnRotate: false,
+			lockOnRotate: false,
+			lockToLandscapeOnEnter: false,
+			disabled: false,
+		},
+		touchControls: {
+			seekSeconds: 10,	
+			tapTimeout: 300,
+			disableOnEnd: false,
+			disabled: !enabled
+		},
+		forceForTesting: true,
+	});
+}
+
+function applyVideoControlBarState() {
+  const controlBar = vp.getChild('ControlBar');
+
+  const controls = {
+    play: controlBar.getChild('PlayToggle'),
+    progress: controlBar.getChild('ProgressControl'),
+    volume: controlBar.getChild('VolumePanel'),
+	time: controlBar.getChild('CurrentTimeDisplay'),
+	timeDivider: controlBar.getChild('TimeDivider'),
+	duration: controlBar.getChild('DurationDisplay'),
+	// remaining: controlBar.getChild('RemainingTimeDisplay'),
+    // rate: controlBar.getChild('PlaybackRateMenuButton'),
+    // pip: controlBar.getChild('PictureInPictureToggle'),
+    fullscreen: controlBar.getChild('FullscreenToggle'),
+  };
+
+  for (const [key, control] of Object.entries(controls)) {
+    if (control) {	
+		state.player_settings.controlBarChildrenState[key]
+			? control.show()
+			: control.hide();
+    }
+  }
+//   controls.volume.inline = false;
+}
+
+function applyUiSettings() {
+	updateOverlayDisplay();
+	applyVideoControlBarState();
+}
+
+
 /* View in fullscreen */
 async function openFullscreen(player) {
+	const currentProfile = state.profiles.find(p => p.id === state.currentProfileId);
 	try {
 		if (player.requestFullscreen) {
 			await player.requestFullscreen({navigationUI: 'hide'});
@@ -1732,7 +2208,7 @@ async function openFullscreen(player) {
 			await player.msRequestFullscreen({navigationUI: 'hide'});
 		}
 		player.currentTime(
-			state.profiles[state.currentProfileId].videos[state.currentlyPlayingVideoId].currentTime || 
+			currentProfile.videos[state.currentlyPlayingVideoId].currentTime || 
 			0);
 		player.volume(state.currentVolume);
 		await player.play();
@@ -1746,7 +2222,7 @@ async function openFullscreen(player) {
 		vp.pause();
 	
 		vp.currentTime(0);
-		state.profiles[state.currentProfileId].videos[state.currentlyPlayingVideoId].currentTime = 0;
+		currentProfile.videos[state.currentlyPlayingVideoId].currentTime = 0;
 		vpElement.dataset.videoId = "";
 		saveState();
 		vpElement.style.display = 'none';
@@ -1760,7 +2236,7 @@ async function openFullscreen(player) {
 		const vpElement = document.getElementById('vp');
 		vp.pause();
 		state.currentVolume = vp.volume();
-		state.profiles[state.currentProfileId].videos[state.currentlyPlayingVideoId].currentTime = vp.currentTime();
+		currentProfile.videos[state.currentlyPlayingVideoId].currentTime = state.player_settings.playbackSettings.rememberVideoTime ? vp.currentTime() : 0;
 		state.currentlyPlayingVideoId = null;
 		saveState();
 
@@ -1801,6 +2277,17 @@ function storageInfoDebug() {
 	navigator.storage.estimate().then(({quota, usage}) => {
 		console.log(`Quota: ${(quota / 1073741824).toFixed(2)} GB - Usage: ${(usage / 1073741824).toFixed(2)} GB`);
 	});
+}
+
+async function cleanZeroByteFilesFromDirectory(directoryHandle) {
+	for await (let handle of directoryHandle.values()) {
+		if (handle.kind === "file") {
+			const f = await handle.getFile(handle.name);
+			if (f.size === 0) {
+				directoryHandle.removeEntry(f.name);
+			}
+		}
+	}
 }
 
 window.storageInfoDebug = storageInfoDebug;

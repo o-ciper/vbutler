@@ -7,7 +7,9 @@
     <title>VButler Video Oynatıcı</title>
     <link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
     <link rel="stylesheet" href="css/style.css">
-    <link href="css/video-js.min.css" rel="stylesheet">
+    <!-- <link href="css/video-js.min.css" rel="stylesheet"> -->
+    <link href="css/video-js-minified.css" rel="stylesheet">
+    <!-- <link href="css/video-js.css" rel="stylesheet"> -->
     <!-- <link rel="stylesheet" href="css/normalize.css"> -->
      <link rel="stylesheet" href="css/bootstrap.min.css">
     <link rel="stylesheet" href="css/videojs-mobile-ui.css">
@@ -35,7 +37,7 @@
             <button class="nav-link" id="profile-settings-panel-tab-btn" data-bs-toggle="tab" data-bs-target="#profile-settings-panel" type="button" role="tab" aria-controls="profile-settings-panel" aria-selected="false">Profil Ayarları</button>
           </li>
           <li class="nav-item" role="presentation">
-            <button class="nav-link" id="video-player-settings-panel-tab-btn" data-bs-toggle="tab" data-bs-target="#video-player-settings-panel" type="button" role="tab" aria-controls="video-player-settings-panel" aria-selected="false">Oynatıcı Ayarları</button>
+            <button class="nav-link" id="other-settings-panel-tab-btn" data-bs-toggle="tab" data-bs-target="#other-settings-panel" type="button" role="tab" aria-controls="other-settings-panel" aria-selected="false">Diğer Ayarlar</button>
           </li>
         </ul>
         <div class="tab-content" id="settingsTabContent">
@@ -88,7 +90,7 @@
                     <button type="button" class="btn btn-success btn-sm" id="add-profile-btn">Profil Ekle</button>
                   </div>
                 </fieldset>
-                <fieldset class="remove-profile-section border px-3">
+                <fieldset class="remove-profile-section border">
                   <legend class="float-none w-auto px-1 fs-8 text-muted">Profil Sil</legend>
                     <ul id="profile-list-container">
                         <li>
@@ -106,10 +108,64 @@
             </form>
           </div>
 
-          <div class="tab-pane fade settings-panel" id="video-player-settings-panel" role="tabpanel" aria-labelledby="video-player-settings-panel-tab">
-            <form class="video-player-settings-form">
-              <div class="video-player-settings-container">
-                <h1>To be implemented</h1>
+          <div class="tab-pane fade settings-panel" id="other-settings-panel" role="tabpanel" aria-labelledby="other-settings-panel-tab">
+            <form class="other-settings-form">
+              <div class="other-settings-container">
+                <fieldset class="video-player-setting-section border px-3">
+                  <legend class="float-none w-auto px-1 fs-8 text-muted">Oynatıcı Ayarları</legend>
+                  <div class="input-group input-group-sm mb-1">
+                    <div class="form-check form-switch">
+                      <input class="form-check-input" type="checkbox" role="switch" id="video-controls-checkbox" data-key="showVideoControls">
+                      <label class="form-check-label" for="video-controls-checkbox">Video kontrollerini göster</label>
+                    </div>
+                  </div>
+                  <div class="input-group input-group-sm mb-1">
+                    <div class="form-check form-check-inline">
+                      <input class="form-check-input" type="checkbox" id="show-playback-controls" value="play" data-key="play">
+                      <label class="form-check-label" for="show-playback-controls">Oynatma kontrollerini göster</label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                      <input class="form-check-input" type="checkbox" id="show-progress-controls" value="progress" data-key="progress">
+                      <label class="form-check-label" for="show-progress-controls">İlerleme çubuğunu göster</label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                      <input class="form-check-input" type="checkbox" id="show-volume-controls" value="volume" data-key="volume">
+                      <label class="form-check-label" for="show-volume-controls">Ses kontrollerini göster</label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                      <input class="form-check-input" type="checkbox" id="show-video-time" value="time" data-key="time">
+                      <label class="form-check-label" for="show-video-time">Video zamanını göster</label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                      <input class="form-check-input" type="checkbox" id="show-fullscreen-controls" value="fullscreen" data-key="fullscreen">
+                      <label class="form-check-label" for="show-fullscreen-controls">Tam ekran kontrollerini göster</label>
+                    </div>
+                  </div>
+                  <hr>
+                  <div class="input-group input-group-sm mb-1">
+                    <div class="form-check form-check-inline">
+                      <input class="form-check-input" type="checkbox" id="remember-video-time" value="rememberVideoTime" data-key="rememberVideoTime">
+                      <label class="form-check-label" for="remember-video-time">Videonun kaldığı yeri hatırla</label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                      <input class="form-check-input" type="checkbox" id="remember-volume-level" value="rememberVolumeLevel" data-key="rememberVolumeLevel">
+                      <label class="form-check-label" for="remember-volume-level">Ses seviyesini hatırla</label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                      <input class="form-check-input" type="checkbox" id="touch-controls-enabled" value="touchControlsEnabled" data-key="touchControlsEnabled">
+                      <label class="form-check-label" for="touch-controls-enabled">Dokunma kontrolleri</label>
+                    </div>
+                  </div>
+                </fieldset>
+                <fieldset class="video-player-setting-section border px-3">
+                  <legend class="float-none w-auto px-1 fs-8 text-muted">Anasayfa Ayarları</legend>
+                    <div class="input-group input-group-sm mb-1">
+                      <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" role="switch" id="show-video-titles" data-key="showVideoTitles">
+                        <label class="form-check-label" for="show-video-titles">Video başlıklarını göster</label>
+                      </div>
+                    </div>
+                </fieldset>
               </div>
             </form>
           </div>

@@ -2,7 +2,7 @@
 - [x] When there are more than one video and poster, deleting a video causes "Error loading thumbnail from OPFS:  TypeError: Cannot set properties of undefined (setting 'src')" at index.js:958:32
 - [x] Check video playback support before uploading to OPFS or first stream a chunk of video to OPFS and then check video support from OPFS.
 - [x] Decide what to do if there are more than the already uploaded video count for a profile when decreasing video count size (e.g. from 4 videos to 2 videos).
-- [ ] Add video player settings support (e.g. player controls visibility).
+- [x] Add video player settings support (e.g. player controls visibility).
 - [x] Warn the user if there are already videos in the profile when deleting the profile.
 - [x] Finish adding seperate poster functionality for a video.
 - [x] Change style for the video and poster upload rows for aesthetics.
@@ -10,3 +10,9 @@
 - [x] Make video title editable by the user
 - [x] Show an indicator while a video is uploading to OPFS
 - [x] There is a problem when uploading more than one video simultaneously. For example when a video is large it takes some time to upload it and I try to upload another video. This causes a problem. Look into it. -- Added some code. Seems ok for now.
+- [x] When an error occurs while uploading a video and if the user tries to add the same file agan, "Bu video dosyası zaten mevcut" error is presented to the user although the video doesn't appear on the resource selector list.
+- [ ] The code need alot of refactoring and restructuring, it is a mess.
+    - [ ] Create a state manager class
+    - [ ] Create an OPFS manager class
+        - [ ] Maybe instead of creating folders for each profile, create everything under the application folder and store the video file information (metadata) in the state along with informations like which video belongs to which profiles (maybe more than one profile share the same video file), its order in the video list etc.
+- [ ] Maybe add feature for adding video URL resource (Youtube etc.)
