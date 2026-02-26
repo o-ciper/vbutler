@@ -168,9 +168,10 @@ main {
 	bottom: 0;
 	left: 0;
 	width: 100%;
-	background: rgba(0, 0, 0, 0.6);
+	/* background: rgba(0, 0, 0, 0.6); */
+	background: linear-gradient(rgba(0, 0, 0, 0), rgba(0, 0, 0, 1));
 	color: #fff;
-	padding: 4px 16px;
+	padding: 8px 16px;
 	font-size: max(1rem, 1cqw, 2cqh);
 	overflow: hidden;
 	white-space: nowrap;
@@ -213,6 +214,26 @@ video {
 	border: none;
 }
 
+/* .video-js .vjs-time-control {
+    display: block!important;
+}
+.video-js .vjs-current-time {
+	display: block;
+}
+.video-js .vjs-remaining-time {
+    display: none!important;
+}
+.vjs-duration-display {
+	display: block;
+} */
+
+/* .video-js .vjs-time-control {
+	display: block !important;
+}
+.video-js .vjs-remaining-time {
+	display: none !important;
+} */
+
 #settingsTab {
 	border-bottom: none;
 	background: #201e1e;
@@ -234,7 +255,7 @@ video {
 
 #profile-settings-panel-tab-btn,
 #video-settings-panel-tab-btn,
-#video-player-settings-panel-tab-btn {
+#other-settings-panel-tab-btn {
 	padding: 6px 10px;
 	margin: 0;
 	font-size: .9rem;
@@ -247,7 +268,7 @@ video {
 
 #profile-settings-panel-tab-btn.active,
 #video-settings-panel-tab-btn.active,
-#video-player-settings-panel-tab-btn.active {
+#other-settings-panel-tab-btn.active {
 	background-color: #222;
 }
 
@@ -300,7 +321,7 @@ video {
 	flex: 1;
 	min-height: 0;
 	border-top: none;
-	padding: 8px 12px 12px;
+	padding: 8px 6px 12px;
 	padding-bottom: 2rem;
 	transition: all .1s ease-in-out;
 	color:#bcbbbb;
@@ -310,6 +331,11 @@ video {
 	overflow: auto;
 	border-bottom-left-radius: 8px;
 	border-bottom-right-radius: 8px;
+}
+
+.other-settings-form-check-input {
+	margin-left: 8px;
+	transform: scale(1.2);
 }
 
 #opfs-disk-usage {
@@ -479,23 +505,29 @@ video {
 	z-index: 101;
 }
 
-#profile-settings-panel fieldset {
+#profile-settings-panel fieldset,
+#other-settings-panel fieldset {
 	border: 1px solid #444;
 	border-radius: 8px;
 	margin-bottom: 10px;
-	padding: 0px 4px 10px;
+	padding: 0px 16px 16px;
 }
 
-#profile-settings-panel legend {
+#profile-settings-panel legend,
+#other-settings-panel legend {
 	font-size: .9rem;
 	padding: 0 4px;
+}
+
+#remove-profile-btn {
+	margin-right: 8px;
 }
 
 
 #profile-list-container {
 	max-height: max(60vh, 250px);
 	overflow-y: auto;
-	margin: 0 0 4px 0;
+	margin: 0 0 12px 0;
 	border-radius: 4px;
 	padding: 0px 0px;
 	scrollbar-color: #555 #222;
@@ -504,8 +536,8 @@ video {
 
 #profile-list-container li {
 	list-style: none;
-	margin-bottom: 6px;
-	padding: 2px 8px;
+	margin-bottom: 8px;
+	padding: 2px 4px 2px 8px;
 	border: 1px solid #444;
 	border-radius: 4px;
 	background-color: #333;
@@ -521,7 +553,20 @@ video {
 #profile-list-container li label {
 	display: inline-block;
 	width: 100%;
+	min-height: 32px;
+	margin-right: 8px;
+    margin-left: 4px;
 	cursor: pointer;
+	place-content: center;
+	word-wrap: break-word;
+}
+
+.edit-profile-name-btn {
+	margin-right: 4px;
+}
+
+.save-profile-name-btn {
+	margin-right: 4px;
 }
 
 select::picker(select) {
@@ -548,13 +593,6 @@ select::picker(select) {
 
 #close-profile-settings-btn svg {
 	height: 1rem;
-}
-
-/* Extra small devices (phones, 600px and down) */
-@media only screen and (max-width: 600px) {
-}
-
-@media only screen and (max-width: 600px) and (orientation: landscape) {
 }
 
 
@@ -630,6 +668,21 @@ select::picker(select) {
 	font-size: 0.95rem;
 }
 
+/* Extra small devices (phones, 600px and down) */
+@media only screen and (max-width: 600px) {
+	#profile-settings-panel fieldset,
+	#other-settings-panel fieldset {
+		padding: 0px 12px 16px;
+	}
+}
+
+@media only screen and (max-width: 600px) and (orientation: landscape) {
+	#profile-settings-panel fieldset,
+	#other-settings-panel fieldset {
+		padding: 0px 14px 16px;
+	}
+}
+
 /* Mobile landscape (small viewport height) */
 @media only screen and (max-height: 500px) {
 	#settingsTab {
@@ -640,7 +693,7 @@ select::picker(select) {
 
 	#profile-settings-panel-tab-btn,
 	#video-settings-panel-tab-btn,
-	#video-player-settings-panel-tab-btn {
+	#other-settings-panel-tab-btn {
 		padding: 8px;
 		margin: 0;
 		font-size: 0.9rem;
@@ -649,7 +702,7 @@ select::picker(select) {
 	}
 
 	.settings-panel {
-		padding: 6px 10px 1.5rem;
+		padding: 6px 4px 1.5rem;
 	}
 
 	.confirm-modal-card {
@@ -678,28 +731,54 @@ select::picker(select) {
 		padding: 0.35rem 0.65rem;
 		font-size: 0.85rem;
 	}
+
+	#profile-settings-panel fieldset,
+	#other-settings-panel fieldset {
+		padding: 0px 8px 16px;
+	}
 }
 
 /* Small devices (portrait tablets and large phones, 600px and up) */
 @media only screen and (min-width: 600px) {
+	.settings-panel {
+		padding: 6px 4px 1.5rem;
+	}
+
+	#profile-settings-panel fieldset,
+	#other-settings-panel fieldset {
+		padding: 0px 8px 16px;
+	}
 }
 
 /* Medium devices (landscape tablets, 768px and up) */
 @media only screen and (min-width: 768px) {
+	#profile-settings-panel fieldset,
+	#other-settings-panel fieldset {
+		padding: 0px 12px 16px;
+	}
 }
 
-/* Small devices (portrait tablets and large phones, 600px and up) */
-@media only screen and (min-width: 600px) {
-}
-
-/* Medium devices (landscape tablets, 768px and up) */
-@media only screen and (min-width: 768px) {
-} 
 
 /* Large devices (laptops/desktops, 992px and up) */
 @media only screen and (min-width: 992px) {
+	.settings-panel {
+		padding: 12px 16px 16px;
+	}
+
+	#profile-settings-panel fieldset,
+	#other-settings-panel fieldset {
+		padding: 0px 16px 16px;
+	}
 }
 
 /* Extra large devices (large laptops and desktops, 1200px and up) */
 @media only screen and (min-width: 1200px) {
+	.settings-panel {
+		padding: 12px 16px 16px;
+	}
+
+	#profile-settings-panel fieldset,
+	#other-settings-panel fieldset {
+		padding: 0px 16px 16px;
+	}
 }
