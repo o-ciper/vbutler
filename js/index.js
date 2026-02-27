@@ -434,6 +434,7 @@ addProfileBtn.addEventListener("click", async () => {
 			}
 		]
 	};
+	profileNameInput.value = "";
 	state.profiles.push(newProfile);
 	state.currentProfileId = newProfileId;
 	saveState();
