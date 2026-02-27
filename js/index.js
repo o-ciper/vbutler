@@ -267,7 +267,7 @@ function saveState() {
 	localStorage.setItem("controlBarChildrenState", JSON.stringify(state.player_settings.controlBarChildrenState));
 	localStorage.setItem("playbackSettings", JSON.stringify(state.player_settings.playbackSettings));
 	localStorage.setItem("showOverlays", JSON.stringify(state.uiSettings.showOverlays));
-	localStorage.setItem("videos", JSON.stringify(state.profiles[state.currentProfileId].videos));
+	localStorage.setItem("videos", JSON.stringify(state.profiles.find(p => p.id === state.currentProfileId).videos));
 }
 
 /* Confirmation Modal Utility */
@@ -392,6 +392,8 @@ profileNameInput.addEventListener("keydown", (e) => {
 
 addProfileBtn.addEventListener("click", async () => {
 	if (state.profileNames.map(p => p.name).includes(profileNameInput.value.trim())) {
+		console.log(state.profileNames);
+		console.log(profileNameInput.value.trim());
 		if (profileListContainer.querySelector("#duplicate-profile-alert")) {
 			return;
 		}
