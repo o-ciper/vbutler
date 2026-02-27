@@ -30,8 +30,10 @@ let DEBUGGING = true;
 
 // OPFS operation queue counter to prevent rerendering source selectors and video list until all queued operations are finished. This is needed because OPFS operations are async and we don't want to trigger multiple renders while there are still pending operations that will update the state. When an OPFS operation is started, rendering the source selectors cause an interruption of the ongoing OPFS operations. This is likely due to the fact that rendering source selectors involves updating the DOM, which can cause the browser to prioritize user interactions and rendering over ongoing async operations. By using a counter to track the number of queued OPFS operations, we can ensure that we only trigger a render after all operations have completed, preventing any potential interruptions and ensuring a smoother user experience.
 let queuedOPFSOperationsCount = 0;
+let notificationOperations
 
 const activeUploadsGlobal = new Map(); 
+const activeUploadsSet = new Set();
 // key: video.id
 // value: { controller, promise }
 
@@ -79,6 +81,7 @@ const state = {
 					videos: [
 						{
 							id: 0,
+							originalFileName: "",
 							storedFileName: "",
 							displayTitle: "",
 							src: "",
@@ -311,6 +314,41 @@ function showConfirmModal(title, message, okButtonText) {
 
 		overlay.style.display = "flex";
 	});
+}
+
+/* Notification Modal Utility */
+function showNotificationModal(title, message, okButtonText) {
+	const overlay = document.getElementById("notification-modal-overlay");
+	const titleEl = document.getElementById("notification-modal-title");
+	const messageEl = document.getElementById("notification-modal-message");
+	const okBtn = document.getElementById("notification-modal-ok-btn");
+
+	titleEl.textContent = title;
+	messageEl.innerHTML = message;
+	okBtn.textContent = okButtonText;
+
+	// Temporarily close settings dialog so modal appears on top
+	const settingsWasOpen = settingsPanelContainer.open;
+	if (settingsWasOpen) {
+		settingsPanelContainer.close();
+	}
+
+	const cleanup = () => {
+		overlay.style.display = "none";
+		okBtn.removeEventListener("click", onOk);
+		// Restore settings dialog
+		if (settingsWasOpen) {
+			settingsPanelContainer.showModal();
+		}
+	};
+
+	const onOk = () => {
+		cleanup();
+	};
+
+	okBtn.addEventListener("click", onOk);
+
+	overlay.style.display = "flex";
 }
 
 showTheButton.addEventListener("click", () => {
@@ -1047,6 +1085,7 @@ function renderSourceSelectors() {
 	// Video Rows
 	for (const video of currentProfile.videos) {
 		const controller = new AbortController();
+		const signal = controller.signal;
 
 		const rowContainer = document.createElement("div");
 		rowContainer.className = "source-selection-row-container";
@@ -1119,6 +1158,32 @@ function renderSourceSelectors() {
 				return;
 			}
 
+			video.originalFileName = file.name;
+			
+			const active = activeUploadsSet.has(file.name);
+
+			if (active) {
+				message = "Bu video zaten yükleme aşamasında.";
+				showNotificationModal("Dikkat", message, "Tamam");
+				input.value = "";
+				// Reenable input and label since we're not proceeding with the upload
+				input.disabled = false;
+				videoLabel.style.pointerEvents = "";
+				videoLabel.style.opacity = "";
+				videoLabel.style.cursor = "";
+
+				// Also re-enable poster upload input and fade it out
+				posterUploadInput.disabled = false;
+				posterLabel.style.pointerEvents = "";
+				posterLabel.style.opacity = "";
+				posterLabel.style.cursor = "";
+				videoIndicator.style.backgroundImage = "";
+				clearRowBtn.textContent = "Sil";
+				return;
+			}
+
+			activeUploadsSet.add(file.name);
+
 			const fileSizeGB = file.size / (1024 * 1024 * 1024);
 
 			const shouldUpload = await shouldUploadVideo(file);
@@ -1126,12 +1191,38 @@ function renderSourceSelectors() {
 			if(!shouldUpload.supported) {
 				alert(shouldUpload.reason);
 				input.value = "";
+				// Reenable input and label since we're not proceeding with the upload
+				input.disabled = false;
+				videoLabel.style.pointerEvents = "";
+				videoLabel.style.opacity = "";
+				videoLabel.style.cursor = "";
+
+				// Also re-enable poster upload input and fade it out
+				posterUploadInput.disabled = false;
+				posterLabel.style.pointerEvents = "";
+				posterLabel.style.opacity = "";
+				posterLabel.style.cursor = "";
+				videoIndicator.style.backgroundImage = "";
+				clearRowBtn.textContent = "Sil";
 				return;
 			} else if (!shouldUpload?.width || !shouldUpload?.height) {
 				const message = "Video boyutları alınamadı. Bu, videonun bazı cihazlarda düzgün oynatılmamasına neden olabilir. Yine de devam etmek istiyor musunuz?";
 				const proceedWithoutDimensions = await showConfirmModal("Dikkat", message, "Devam Et");
 				if (!proceedWithoutDimensions) {
 					input.value = "";
+					// Reenable input and label since we're not proceeding with the upload
+					input.disabled = false;
+					videoLabel.style.pointerEvents = "";
+					videoLabel.style.opacity = "";
+					videoLabel.style.cursor = "";
+
+					// Also re-enable poster upload input and fade it out
+					posterUploadInput.disabled = false;
+					posterLabel.style.pointerEvents = "";
+					posterLabel.style.opacity = "";
+					posterLabel.style.cursor = "";
+					videoIndicator.style.backgroundImage = "";
+					clearRowBtn.textContent = "Sil";
 					return;
 				}
 			}
@@ -1260,6 +1351,7 @@ function renderSourceSelectors() {
 			activeUploadsGlobal.set(video.id, {
 				controller,
 				promise: uploadPromise,
+				storedFileName: file.name,
 				displayTitle: file.name
 			});
 
@@ -1280,7 +1372,7 @@ function renderSourceSelectors() {
 				uploadError = true;
 				if (err.name === 'AbortError') {
 					console.log('Upload cancelled');
-					alert("Yüleme iptal edildi.");
+					showNotificationModal("Dikkat", "Yükleme iptal edildi", "Tamam");
 				} else {
 					console.error(err);
 				}
@@ -1334,6 +1426,8 @@ function renderSourceSelectors() {
 			if (queuedOPFSOperationsCount < 1) {
 				renderSourceSelectors();
 			}
+			video.originalFileName = "";
+			activeUploadsSet.delete(file.name);
 			renderVideoList();
 			saveState();
 		});
@@ -1429,17 +1523,27 @@ function renderSourceSelectors() {
 		clearRowBtn.id = `remove-source-${video.id + 1}-btn`;
 		clearRowBtn.textContent = "Sil";
 		clearRowBtn.addEventListener("click", async () => {
+			if (video.originalFileName) {
+				activeUploadsSet.delete(video.originalFileName);
+				video.originalFileName = "";
+				// showNotificationModal("Dikkat", "Yükleme iptal edildi", "Tamam");
+				controller.abort()
+			}
+
 			const active = activeUploadsGlobal.get(video.id);
 
+			console.log(active);
 			if (active) {
 				active.controller.abort();
-
+				
 				try {
 					await active.promise;
 				} catch (e) {
-				// ignore abort error
+					// ignore abort error
 				}
-
+				
+				activeUploadsSet.delete(active.storedFileName);
+				
 				activeUploadsGlobal.delete(video.id);
 			}
 
@@ -1478,6 +1582,7 @@ function renderSourceSelectors() {
 					alert("Video posterini silerken bir hata oluştu");
 				});
 			}
+			video.originalFileName = "";
 			video.storedFileName = "";
 			video.displayTitle = "";
 			video.src = "";
@@ -2494,6 +2599,15 @@ async function copyToOPFSWithCancel(file, fileHandle, signal) {
 
 function isUploading(videoId) {
   return activeUploadsGlobal.has(videoId);
+}
+
+function findInActiveUploadsGlobal(map, val) {
+  for (let [k, v] of map) {
+    if (v.storedFileName === val) { 
+      return true; 
+    }
+  }  
+  return false;
 }
 
 // Complete workflow with OPFS

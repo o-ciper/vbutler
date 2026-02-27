@@ -597,7 +597,8 @@ select::picker(select) {
 
 
 /* Custom confirmation modal overlay */
-.confirm-modal-overlay {
+.confirm-modal-overlay,
+.notification-modal-overlay {
 	position: fixed;
 	top: 0;
 	left: 0;
@@ -614,7 +615,8 @@ select::picker(select) {
 	word-break: break-all;
 }
 
-.confirm-modal-card {
+.confirm-modal-card,
+.notification-modal-card {
 	background: #1e1e1e;
 	border: 1px solid #444;
 	border-radius: 0.5rem;
@@ -628,19 +630,22 @@ select::picker(select) {
 	overflow: hidden;
 }
 
-.confirm-modal-header {
+.confirm-modal-header,
+.notification-modal-header {
 	padding: 1rem;
 	border-bottom: 1px solid #444;
 	flex-shrink: 0;
 }
 
-.confirm-modal-header h3 {
+.confirm-modal-header h3,
+.notification-modal-header h3 {
 	margin: 0;
 	font-size: 1.25rem;
 	color: #fff;
 }
 
-.confirm-modal-body {
+.confirm-modal-body,
+.notification-modal-body {
 	padding: 1.5rem;
 	color: #ddd;
 	line-height: 1.6;
@@ -649,11 +654,13 @@ select::picker(select) {
 	min-height: 0;
 }
 
-.confirm-modal-body p {
+.confirm-modal-body p,
+.notification-modal-body p {
 	margin: 0;
 }
 
-.confirm-modal-footer {
+.confirm-modal-footer,
+.notification-modal-footer {
 	padding: 1rem;
 	border-top: 1px solid #444;
 	display: flex;
@@ -662,7 +669,8 @@ select::picker(select) {
 	flex-shrink: 0;
 }
 
-.confirm-modal-footer .btn {
+.confirm-modal-footer .btn,
+.notification-modal-footer .btn {
 	min-width: 80px;
 	padding: 0.4rem 0.8rem;
 	font-size: 0.95rem;
