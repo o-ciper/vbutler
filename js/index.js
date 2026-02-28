@@ -26,7 +26,7 @@ const removeAllProfilesBtn = document.getElementById("remove-all-profiles-btn");
 const videoCountValues = [1, 2, 4];
 const settingsCheckBoxes = document.querySelectorAll("#settings-panel-container input[type='checkbox']");
 
-let DEBUGGING = true;
+let DEBUGGING = false;
 
 // OPFS operation queue counter to prevent rerendering source selectors and video list until all queued operations are finished. This is needed because OPFS operations are async and we don't want to trigger multiple renders while there are still pending operations that will update the state. When an OPFS operation is started, rendering the source selectors cause an interruption of the ongoing OPFS operations. This is likely due to the fact that rendering source selectors involves updating the DOM, which can cause the browser to prioritize user interactions and rendering over ongoing async operations. By using a counter to track the number of queued OPFS operations, we can ensure that we only trigger a render after all operations have completed, preventing any potential interruptions and ensuring a smoother user experience.
 let queuedOPFSOperationsCount = 0;
@@ -97,6 +97,9 @@ const state = {
 			],
 	get profileNames() {
 		return this.profiles.map(p => ({id: p.id, originalName: p.originalName, OPFSName: p.OPFSName, displayName: p.displayName}));
+	},
+	get profileNamesSet() {
+		return new Set(this.profiles.map(p => p.displayName));
 	},
 	currentProfileId: localStorage.getItem("currentProfileId") ?
 		JSON.parse(localStorage.getItem("currentProfileId")) :
@@ -882,7 +885,7 @@ function renderProfileList() {
 		const isChecked = e.target.checked;
 		const checkboxes = profileListContainer.querySelectorAll("input[type='checkbox']");
 		checkboxes.forEach(checkbox => {
-			if (checkbox.id === 0 || checkbox.value === "0" || state.profileNames[checkbox.value] === "Varsayılan") {
+			if (checkbox.id === 0 || checkbox.value === "0" || state.profiles.find(p => p.name === checkbox.value) === "Varsayılan") {
 				return;
 			}
 			checkbox.checked = isChecked;
@@ -897,7 +900,7 @@ function renderProfileList() {
 	selectAllLi.appendChild(selectAllLabel);
 	profileListContainer.appendChild(selectAllLi);
 
-	for (const profile of state.profileNames) {
+	for (const profile of state.profiles) {
 		const li = document.createElement("li");
 		li.className = "profile-list-item";
 
@@ -940,7 +943,9 @@ function renderProfileList() {
 				checkBox.disabled = true;
 				checkBox.style.cursor = "none";
 				// label.style.color = "#81ff76";
-				label.style.color = "#fcf810";
+				if (label.style.color === "") {
+					label.style.color = "#fcf810";
+				} 
 				label.style.opacity = "1";
 				label.style.border = "1px dashed #fcf810";
 				label.style.cursor = "text";
@@ -950,6 +955,7 @@ function renderProfileList() {
 				const sel = window.getSelection();
 				sel.removeAllRanges();
 				sel.addRange(range);
+				cancelEditBtn.disabled = false;
 			});
 
 			saveProfileNameBtn.type = "button";
@@ -960,19 +966,53 @@ function renderProfileList() {
 				label.contentEditable = false;
 				label.style.border = "none";
 				label.style.cursor = "pointer";
-				const currentProfile = state.profiles.find(p => p.id === profile.id);
-				currentProfile.displayName = label.textContent.trim();
-				checkBox.disabled = false;
-				checkBox.style.cursor = "pointer";
-
-				saveState();
-				renderProfileList();
-				renderProfileSelectList()
+				// const currentProfile = state.profiles.find(p => p.id === profile.id);
+				const profileName = profile.displayName;
+				if (profileName === label.textContent.trim()) {
+					label.contentEditable = false;
+					label.style.border = "none";
+					label.style.cursor = "pointer";
+					label.style.color = "";
+					label.textContent = profile.displayName;
+					checkBox.disabled = false;
+					checkBox.style.cursor = "pointer";
+					cancelEditBtn.disabled = true;
+					return;
+				}
+				if (state.profiles.map(p => p.displayName).includes(label.textContent.trim())) {
+					console.log(state.profiles);
+					console.log(profileNameInput.value.trim());
+					if (profileListContainer.querySelector("#duplicate-profile-alert")) {
+						editProfileNameBtn.click();
+						return;
+					}
+					const alertDiv = document.createElement("div");
+					alertDiv.className = "alert alert-warning";
+					alertDiv.role = "alert";
+					alertDiv.id = "duplicate-profile-alert";
+					alertDiv.textContent = `"${label.textContent.trim()}" isimli bir profil zaten var. Lütfen farklı bir isim girin.`;
+					li.insertAdjacentElement("beforebegin", alertDiv);
+					editProfileNameBtn.click();
+					setTimeout(() => {
+						if (profileListContainer.contains(alertDiv)) {
+							profileListContainer.removeChild(alertDiv);
+						}
+					}, 3000);
+				} else {
+					profile.displayName = label.textContent.trim();
+					checkBox.disabled = false;
+					checkBox.style.cursor = "pointer";
+	
+					saveState();
+					renderProfileList();
+					renderProfileSelectList()
+				}
 			});
 
 			cancelEditBtn.type = "button";
 			cancelEditBtn.className = "btn btn-sm btn-secondary cancel-edit-profile-name-btn settings-btn";
 			cancelEditBtn.textContent = emojiMap.cancel;
+			cancelEditBtn.disabled = true;
 			cancelEditBtn.addEventListener("click", () => {
 				label.contentEditable = false;
 				label.style.border = "none";
@@ -981,12 +1021,53 @@ function renderProfileList() {
 				label.textContent = profile.displayName;
 				checkBox.disabled = false;
 				checkBox.style.cursor = "pointer";
+				cancelEditBtn.disabled = true;
 			});
-
 			label.addEventListener("keydown", (e) => {
 				if (e.key === "Enter") {
 					e.preventDefault();
-					saveProfileNameBtn.click();
+					if (profile.displayName === label.textContent.trim()) {
+						label.contentEditable = false;
+						label.style.border = "none";
+						label.style.cursor = "pointer";
+						label.style.color = "";
+						label.textContent = profile.displayName;
+						checkBox.disabled = false;
+						checkBox.style.cursor = "pointer";
+						cancelEditBtn.disabled = true;
+						return;
+					}
+					if (state.profiles.map(p => p.displayName).includes(label.textContent.trim())) {
+						if (profileListContainer.querySelector("#duplicate-profile-alert")) {
+							return;
+						}
+						const alertDiv = document.createElement("div");
+						alertDiv.className = "alert alert-warning";
+						alertDiv.role = "alert";
+						alertDiv.id = "duplicate-profile-alert";
+						alertDiv.textContent = `"${label.textContent.trim()}" isimli bir profil zaten var. Lütfen farklı bir isim girin.`;
+						li.insertAdjacentElement("beforebegin", alertDiv);
+						editProfileNameBtn.click();
+						setTimeout(() => {
+							if (profileListContainer.contains(alertDiv)) {
+								profileListContainer.removeChild(alertDiv);
+							}
+						}, 3000);
+					} else {
+						saveProfileNameBtn.click();
+					}
+				}
+			});
+			const profileNamesSet = state.profileNamesSet;
+			label.addEventListener("input", (e) => {
+				if(profileNamesSet.has(label.textContent.trim())) {
+					if (profile.displayName === label.textContent.trim()) {
+						label.style.color = "yellow";
+					} else {
+						label.style.color = "red";
+					}
+				} else {
+					label.style.color = "limegreen";
 				}
 			});
 			
@@ -1886,7 +1967,7 @@ async function renderVideoList() {
 			const playerContainer = document.getElementById('vp');
 			// playerContainer.dataset.videoId = video.id;
 			const videoUrl = video.src;
-			console.log("Playing video URL:", videoUrl);
+			// console.log("Playing video URL:", videoUrl);
 			// 1. Show player
     		playerContainer.style.display = 'block';
 			vp.src({ src: videoUrl, type: 'video/mp4'});
@@ -2123,7 +2204,6 @@ function initSettingsPanelInputs() {
 					: checkbox.checked = false; 
 				break;
 			case "touchControlsEnabled":
-				console.log("touchControlsEnabled", state.player_settings.playbackSettings.touchControlsEnabled);
 				state.player_settings.playbackSettings.touchControlsEnabled
 					? checkbox.checked = true
 					: checkbox.checked = false;
