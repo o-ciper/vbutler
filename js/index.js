@@ -74,7 +74,8 @@ const state = {
 			[
 				{
 					id: 0,
-					name: "Varsayılan",
+					originalName: "Varsayılan",
+					OPFSName: "Varsayılan",
 					displayName: "Varsayılan",
 					opfsProfileDirectoryHandle: null,
 					videoCount: 1,
@@ -95,7 +96,7 @@ const state = {
 				}
 			],
 	get profileNames() {
-		return this.profiles.map(p => ({id: p.id, name: p.name, displayName: p.displayName}));
+		return this.profiles.map(p => ({id: p.id, originalName: p.originalName, OPFSName: p.OPFSName, displayName: p.displayName}));
 	},
 	currentProfileId: localStorage.getItem("currentProfileId") ?
 		JSON.parse(localStorage.getItem("currentProfileId")) :
@@ -169,19 +170,19 @@ let opfsInitPromise = (async function getOpfsRoot(){
 		return;
 	}
 	for (const profile of state.profiles) {
-		const opfsProfileDirectoryHandle  = await butlerVideosDirectoryHandle.getDirectoryHandle(profile.name, {create: true});
+		const opfsProfileDirectoryHandle  = await butlerVideosDirectoryHandle.getDirectoryHandle(profile.OPFSName, {create: true});
 		await cleanZeroByteFilesFromDirectory(opfsProfileDirectoryHandle);
 		profile.opfsProfileDirectoryHandle = opfsProfileDirectoryHandle;
 		for (video of profile.videos) {
 			if (video.storedFileName !== "") {
-				// console.log(`Getting video handle for ${video.storedFileName} in profile ${profile.name}`);
+				// console.log(`Getting video handle for ${video.storedFileName} in profile diplayName: ${profile.displayName}, OPFSName: ${profile.OPFSName}`);
 				try {
 					const opfsVideoHandle = await opfsProfileDirectoryHandle.getFileHandle(video.storedFileName);
-					// console.log(`Got video handle for ${video.storedFileName} in profile ${profile.name}: `, opfsVideoHandle);
+					// console.log(`Got video handle for ${video.storedFileName} in profile ${profile.displayName}: `, opfsVideoHandle);
 					try {
 						const opfsVideoFile = await opfsVideoHandle.getFile();
 						video.src = URL.createObjectURL(opfsVideoFile);
-						// console.log(`Created object URL for ${video.storedFileName} in profile ${profile.name}: `, video.src);
+						// console.log(`Created object URL for ${video.storedFileName} in profile ${profile.displayName}: `, video.src);
 					} catch (err) {
 						console.error("Could not create object URL from file handle:", err);
 					}
@@ -190,15 +191,15 @@ let opfsInitPromise = (async function getOpfsRoot(){
 				}
 			}
 			if (video.posterTitle !== "") {
-				// console.log(`Video ${video.storedFileName} in profile ${profile.name} has a poster: ${video.poster}`);
+				// console.log(`Video ${video.storedFileName} in profile ${profile.displayName} has a poster: ${video.poster}`);
 				try {
 					const thumbnailHandle = await opfsProfileDirectoryHandle.getFileHandle(video.posterTitle);
-					// console.log(`Got thumbnail handle for ${video.storedFileName} in profile ${profile.name}: `, thumbnailHandle);
+					// console.log(`Got thumbnail handle for ${video.storedFileName} in profile ${profile.displayName}: `, thumbnailHandle);
 					try {
 						const opfsThumbnailFile = await thumbnailHandle.getFile();
 						video.poster = URL.createObjectURL(opfsThumbnailFile);
 						video.posterTitle = thumbnailHandle.name;
-						// console.log(`Created object URL for thumbnail of ${video.storedFileName} in profile ${profile.name}: `, video.poster);
+						// console.log(`Created object URL for thumbnail of ${video.storedFileName} in profile ${profile.displayName}: `, video.poster);
 					} catch (err) {
 						console.error("Could not create object URL from thumbnail handle:", err);
 					}
@@ -391,7 +392,7 @@ profileNameInput.addEventListener("keydown", (e) => {
 });
 
 addProfileBtn.addEventListener("click", async () => {
-	if (state.profileNames.map(p => p.name).includes(profileNameInput.value.trim())) {
+	if (state.profileNames.map(p => p.displayName).includes(profileNameInput.value.trim())) {
 		console.log(state.profileNames);
 		console.log(profileNameInput.value.trim());
 		if (profileListContainer.querySelector("#duplicate-profile-alert")) {
@@ -416,9 +417,10 @@ addProfileBtn.addEventListener("click", async () => {
 	const newProfile = {
 		// id: state.profiles.length,
 		id: newProfileId,
-		name: `${profileNameInput.value !== "" ? profileNameInput.value : `Profil ${newProfileId}`}`,
+		originalName: `${profileNameInput.value !== "" ? profileNameInput.value : `Profil ${newProfileId}`}`,
+		OPFSName: `${profileNameInput.value !== "" ? `${profileNameInput.value}_${newProfileId}` : `Profil ${newProfileId}`}`,
 		displayName: `${profileNameInput.value !== "" ? profileNameInput.value : `Profil ${newProfileId}`}`,
-		opfsProfileDirectoryHandle: await butlerVideosDirectoryHandle.getDirectoryHandle(`${profileNameInput.value !== "" ? profileNameInput.value : `Profil ${newProfileId}`}`, {create: true}),
+		opfsProfileDirectoryHandle: await butlerVideosDirectoryHandle.getDirectoryHandle(`${profileNameInput.value !== "" ? `${profileNameInput.value}_${newProfileId}` : `Profil ${newProfileId}`}`, {create: true}),
 		videoCount: 1,
 		videos: [
 			{
@@ -471,7 +473,7 @@ removeProfileBtn.addEventListener("click", async () => {
 	for (const profile of profilesToCheck) {
 		if (profile.videos && profile.videos.length > 0 && profile.videos.some(video => video.src && video.src !== "")) {
 			const confirmationMessage = `
-				<strong>${profile.name}</strong> profilinde <strong>${profile.videos.filter(video => video.src && video.src !== "").length} adet video</strong> var:<br>
+				<strong>${profile.displayName}</strong> profilinde <strong>${profile.videos.filter(video => video.src && video.src !== "").length} adet video</strong> var:<br>
 				<ul>
 				${profile.videos.filter(video => video.src && video.src !== "").map(video => `<li>${video.displayTitle}</li>`).join("")}
 				</ul>
@@ -543,7 +545,7 @@ removeAllProfilesBtn.addEventListener("click", async () => {
 	} else {
 		(async () => {
 			
-			const profilesToRemove = state.profiles.filter(profile => profile.id !== 0 && state.profileNames.find(p => p.id === profile.id)?.name !== "Varsayılan");
+			const profilesToRemove = state.profiles.filter(profile => profile.id !== 0 && state.profileNames.find(p => p.id === profile.id)?.displayName !== "Varsayılan");
 			for (const profile of profilesToRemove) {
 				if (profile.videos && profile.videos.length > 0) {
 					for (const video of profile.videos) {
@@ -561,7 +563,7 @@ removeAllProfilesBtn.addEventListener("click", async () => {
 				}
 			}
 		})();
-		state.profiles = state.profiles.filter(profile => profile.id === 0 || profile.name === "Varsayılan");
+		state.profiles = state.profiles.filter(profile => profile.id === 0 || profile.displayName === "Varsayılan");
 		state.currentProfileId = 0;
 	}
 	
@@ -846,7 +848,7 @@ function renderProfileSelectList() {
 	for (const profile of state.profiles) {
 		const option = document.createElement("option");
 		option.value = profile.id;
-		option.textContent = profile.displayName || profile.name;
+		option.textContent = profile.displayName || profile.originalName;
 		if (profile.id === state.currentProfileId) {
 			option.selected = true;
 		} else if (state.profiles.length === 1) {
@@ -906,7 +908,7 @@ function renderProfileList() {
 		checkBox.id = `profile_${profile.id}_select`;
 		checkBox.value = profile.id;
 
-		if (profile.id === 0 || profile.name === "Varsayılan") {
+		if (profile.id === 0 || profile.displayName === "Varsayılan") {
 			checkBox.disabled = true;
 		}
 
@@ -924,8 +926,11 @@ function renderProfileList() {
 			}
 		});
 
-		if (profile.id !== 0 && profile.name !== "Varsayılan") {
+		if (profile.id !== 0 && profile.displayName !== "Varsayılan") {
 			const editProfileNameBtn = document.createElement("button");
+			const saveProfileNameBtn = document.createElement("button");
+			const cancelEditBtn = document.createElement("button");
+
 			editProfileNameBtn.type = "button";
 			editProfileNameBtn.className = "btn btn-sm btn-secondary edit-profile-name-btn settings-btn";
 			editProfileNameBtn.textContent = emojiMap.edit;
@@ -947,7 +952,6 @@ function renderProfileList() {
 				sel.addRange(range);
 			});
 
-			const saveProfileNameBtn = document.createElement("button");
 			saveProfileNameBtn.type = "button";
 			saveProfileNameBtn.className = "btn btn-sm btn-secondary save-profile-name-btn settings-btn";
 			saveProfileNameBtn.innerHTML = emojiMap.save;
@@ -966,7 +970,6 @@ function renderProfileList() {
 				renderProfileSelectList()
 			});
 
-			const cancelEditBtn = document.createElement("button");
 			cancelEditBtn.type = "button";
 			cancelEditBtn.className = "btn btn-sm btn-secondary cancel-edit-profile-name-btn settings-btn";
 			cancelEditBtn.textContent = emojiMap.cancel;
@@ -978,6 +981,13 @@ function renderProfileList() {
 				label.textContent = profile.displayName;
 				checkBox.disabled = false;
 				checkBox.style.cursor = "pointer";
+			});
+
+			label.addEventListener("keydown", (e) => {
+				if (e.key === "Enter") {
+					e.preventDefault();
+					saveProfileNameBtn.click();
+				}
 			});
 			
 			li.appendChild(editProfileNameBtn);
@@ -1041,7 +1051,7 @@ function renderSourceSelectors() {
 	removeAllSourcesBtn.addEventListener("click", async () => {
 		if (currentProfile.videos.some(video => video.src && video.src !== "")) {
 			const message = `
-				<strong>${currentProfile.name}</strong> profilindeki <strong>bütün videolar</strong> tarayıcı hafızasından kalıcı olarak silinecek:<br>
+				<strong>${currentProfile.displayName}</strong> profilindeki <strong>bütün videolar</strong> tarayıcı hafızasından kalıcı olarak silinecek:<br>
 				<ul>
 					${currentProfile.videos.filter(video => video.src && video.src !== "").map(video => `<li>${video.displayTitle}</li>`).join('')}
 				</ul>
@@ -1911,7 +1921,7 @@ async function renderVideoList() {
 							imgEl.style.display = '';
 							video.poster = thumbnailUrl;
 							video.posterTitle = thumbnailHandle.name;
-							// console.log(`Set thumbnail for ${video.storedFileName} in profile ${currentProfile.name}: `, thumbnailUrl);
+							// console.log(`Set thumbnail for ${video.storedFileName} in profile ${currentProfile.displayName}: `, thumbnailUrl);
 						}).catch(err => {
 							console.error("Error loading thumbnail from OPFS: ", err);
 							imgEl.src = "./img/placeholder.svg";
