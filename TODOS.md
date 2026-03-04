@@ -18,9 +18,14 @@
 - [ ] Maybe add feature for adding video URL resource (Youtube etc.)
 - [x] Disable poster uploading when there is no video.
 - [x] On video upload page add a button for video play.
-- [x] Show file sizes less than 1 GB in MB's
+- [x] Show file sizes less than 1 GiB in MiB's
 - [x] On video displayName change: add enter key support to save the name.
-- [x] Add another interface option where all video thumbnails cover the ciible screen in equal portions.
+- [x] Add another interface option where all video thumbnails cover the device screen in equal portions.
 - [x] Information - Notification modals (div style) causes the panel settings modal to rerender, and this causes cancellation of all ongoing fileoperations. Fix it!!
 - [x] When trying to upload an already uploaded video, the code correctly warns that the video is already in the list (or uploading). But when the user tries to upload the video again, all consecutive tries gives the warning "Bu video zaten yükleme aşamasında.". Fix it.(This maybe related to information modal bug that is aforementioned above.)
 - [x] On other settings tab, add a button for deleting everything in OPFS.
+    - [x] When there is no video in any of the profiles, deletion of profiles doesn't happen.
+- [x] When the user tries to upload a hevc video on a semi-supported platform (sound is present but no video so thumbnail can not be generated - 0px) so video upload fails. In this case the file name remains in hte titleContainer in the source selection row. Fix it. And there is a notification as an alert.
+- [x] Check if removing profiles and files in Firefox works.
+- [ ] Disable soundbar auto hide.
+- [ ] Maybe add subtitle support (uploading a subtitle as well)

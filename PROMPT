@@ -79,3 +79,7 @@ if (fileSizeGBInfo >= 1) {
 }
 ```
 in index.js file lets show the upload progress instead. 
+
+-----------------------------------------------------------------
+
+I want to convert this app into an installable PWA that works offline, goes into full screen mode after launch, and hides browser or any OS UI elements as much as possible. The app should check if any updates are present online and fetch the updated changes (I am not sure when the app should do this: e.g., on launch, periodically, or when the user triggers it). Can you help me to create a manifest.json file and make the necessary changes to index.html to register the manifest and also create a service worker file that will cache the necessary assets for offline usage? Let's start with the manifest.json file. Let's go step by step please. 
