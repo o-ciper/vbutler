@@ -1254,7 +1254,6 @@ function renderSourceSelectors() {
 		videoUploadInput.style.display = "none";
 		
 		videoUploadInput.addEventListener("change", async (e) => {
-			console.log("Change event worked.")
 			const input = e.target;
 			videoIndicator.style.backgroundImage = `url(${sourceIsUploadingIndicatorPath})`;
 			// Change clear button text to "İptal" (Cancel) during upload
@@ -1296,7 +1295,6 @@ function renderSourceSelectors() {
 			// const videoPosterImages = document.querySelectorAll(".video-poster-img");
 
 			// const videoTestElement = document.createElement('video');
-			console.log("file: ", file);
 
 			if(!file) {
 				alert("Dosya seçilemedi. Lütfen tekrar deneyin.");
@@ -1350,9 +1348,9 @@ function renderSourceSelectors() {
 			const fileSizeGBInfo = file.size / (1024 * 1024 * 1024);
 			const fileSizeMBInfo = file.size / (1024 * 1024);
 			if (fileSizeGBInfo >= 1) {
-				videoSize.textContent = `${fileSizeGBInfo.toFixed(2)} GB`;
+				videoSize.textContent = `${fileSizeGBInfo.toFixed(2)} GiB`;
 			} else if (fileSizeMBInfo >= 1) {
-				videoSize.textContent = `${fileSizeMBInfo.toFixed(2)} MB`;
+				videoSize.textContent = `${fileSizeMBInfo.toFixed(2)} MiB`;
 			} else {
 				videoSize.textContent = `${file.size} bytes`;
 			}	
