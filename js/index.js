@@ -1304,7 +1304,8 @@ function renderSourceSelectors() {
 			const playButton = document.createElement("button");
 			playButton.type = "button";
 			playButton.className = "btn btn-sm btn-secondary play-video-btn settings-btn";
-			playButton.textContent = emojiMap.play;
+			// playButton.textContent = emojiMap.play;
+			playButton.innerHTML = `<i class="bi bi-play"></i>`;
 			playButton.addEventListener("click", () => {
 				videoPlaybackInPreviewMode = true;
 				const playerContainer = document.getElementById('vp');
@@ -1940,8 +1941,8 @@ function renderSourceSelectors() {
 
 		const playButton = document.createElement("button");
 		playButton.type = "button";
-		playButton.className = "btn btn-sm btn-secondary play-video-btn settings-btn";
-		playButton.textContent = emojiMap.play;
+		playButton.className = "btn btn-sm btn-success rounded-circle play-video-btn settings-btn";
+		playButton.innerHTML = `<i class="bi bi-play" style="font-size: 1.2rem;"></i>`;
 		playButton.addEventListener("click", () => {
 			videoPlaybackInPreviewMode = true;
 			const playerContainer = document.getElementById('vp');
