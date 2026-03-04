@@ -16,3 +16,11 @@
     - [ ] Create an OPFS manager class
         - [ ] Maybe instead of creating folders for each profile, create everything under the application folder and store the video file information (metadata) in the state along with informations like which video belongs to which profiles (maybe more than one profile share the same video file), its order in the video list etc.
 - [ ] Maybe add feature for adding video URL resource (Youtube etc.)
+- [x] Disable poster uploading when there is no video.
+- [x] On video upload page add a button for video play.
+- [x] Show file sizes less than 1 GB in MB's
+- [x] On video displayName change: add enter key support to save the name.
+- [x] Add another interface option where all video thumbnails cover the ciible screen in equal portions.
+- [x] Information - Notification modals (div style) causes the panel settings modal to rerender, and this causes cancellation of all ongoing fileoperations. Fix it!!
+- [x] When trying to upload an already uploaded video, the code correctly warns that the video is already in the list (or uploading). But when the user tries to upload the video again, all consecutive tries gives the warning "Bu video zaten yükleme aşamasında.". Fix it.(This maybe related to information modal bug that is aforementioned above.)
+- [x] On other settings tab, add a button for deleting everything in OPFS.

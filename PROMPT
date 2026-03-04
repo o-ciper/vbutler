@@ -1,0 +1,81 @@
+I wanted to implement a way to disable(abort) a video upload process to OPFS when the user clicks a "Video Seç" button (input label) on a row in the "Video Ayarları" panel settings and selects a video file to upload. The "Sil" button's textContent becomes "İptal" as an indicator to abort the upload process. There are two situations where the user might click the "İptal" button:
+- First the user clicks the "İptal" button before the upload process to OPFS starts, which should prevent the upload from starting.
+- Second the user clicks the "İptal" button after the upload process has started, which should abort the ongoing upload, and the remnants of already uploaded data should be removed from OPFS. And at last the "İptal" button's textContent should revert back to "Sil", the "Poster Seç" button should revert back to being disabled, the video is uploading indicator should return back to: ```videoIndicator.style.backgroundImage = ""``` and the "Video Seç" button should be re-enabled after the upload process is aborted.
+
+I am trying to monitor which video file is being uploaded with the following global variables:
+
+```JavaScript
+const activeUploadsGlobal = new Map(); 
+const activeUploadsSet = new Set();
+``` 
+But there is this problem:
+- When the user clicks the "İptal" button after the upload process has started, the upload process is succssfully aborted and the remnants are succsfully removed from OPFS as far as I can tell, but
+- If the user clicks the "İptal" button before the upload starts the process seems to be aborted succsfully, but when the user clicks the "Video Seç" button again from any row, the user is presented with the notification "Bu video zaten yükleme aşamasında." and when the user clicks "Tamam" on the notification, the "Video Seç" button is re-enabled, the "Sil" button's text content is reverted back to "Sil", the "Poster Seç" button is disabled as expected but the "video is uploading" indicator's background image remains unchanged. The indicator goes away when the user clicks the "Sil" button again. But when the user clicks the "Video Seç" button again, the same issue occurs where the notification "Bu video zaten yükleme aşamasında." is shown and the "video is uploading" indicator's background image remains unchanged until the user clicks the "Sil" button again. At this stage when I check the value of the `activeUploadsGlobal` and `activeUploadsSet`, I see that the video file that was supposed to be aborted is still present in `activeUPloadsSet` but not in `activeUploadsGlobal`. This indicates that the video file is still being tracked as an active upload in the set, which is likely causing the notification to appear and the indicator to remain unchanged.
+
+What do you think is the best way to resolve this issue? Should I ensure that the video file is removed from both `activeUploadsGlobal` and `activeUploadsSet` when the upload process is aborted, regardless of whether it was aborted before or after it started? Additionally, should I consider implementing a more robust state management system to track the status of each video upload more effectively, perhaps using an object or class to encapsulate the upload state and related properties? But before a more robost implementation suggestion let's try to fix the current issue by ensuring that the video file is removed from both `activeUploadsGlobal` and `activeUploadsSet` when the upload process is aborted, regardless of whether it was aborted before or after it started.
+
+--------------------------------------------------------------------------------------------------------------
+
+Another issue is the user selects a large file and the upload process starts, then the user selects the same video on another row by clicking "Video Seç" button, the user is successsfully greeted with the notification "Bu video zaten yükleme aşamasında." and when the user clicks the "Tamam" button on the notification, the "Video Seç" button is re-enabled, the "Sil" button's text content is reverted back to "Sil", the "Poster Seç" button is disabled as expected but the "video is uploading" indicator's background image remains unchanged. When the user clicks "Sil" button on the same row the indicator goes away. And when the upload finishes the "Sil" button becomes "İptal". When the user clicks another "Video Seç" button on another row while the upload process is still going on, the same file starts to upload again with a name like "C Programming - Loading large text files into memory [5wzmEKjNqiU].mp4.1.crswap" while the original swap file name is "C Programming - Loading large text files into memory [5wzmEKjNqiU].mp4.crswap". This shouldn't happen. Will removing
+```JavaScipt
+// Clean up any possible stuck state
+				activeUploadsSet.delete(file.name);
+				activeUploadsGlobal.delete(video.id);
+```
+from:
+```JavaScript
+if (active) {
+  message = "Bu video zaten yükleme aşamasında.";
+  showNotificationModalDialog("Dikkat", message, "Tamam");
+  input.value = "";
+  // Clean up any possible stuck state
+  activeUploadsSet.delete(file.name);
+  activeUploadsGlobal.delete(video.id);
+  // Reenable input and label since we're not proceeding with the upload
+  input.disabled = false;
+  videoLabel.style.pointerEvents = "";
+  videoLabel.style.opacity = "";
+  videoLabel.style.cursor = "";
+
+  if (video.poster === "") {
+    posterUploadInput.disabled = true;
+    posterLabel.style.pointerEvents = "none";
+    posterLabel.style.opacity = "0.5";
+    posterLabel.style.cursor = "not-allowed";
+  } else {
+    posterUploadInput.disabled = false;
+    posterLabel.style.pointerEvents = "";
+    posterLabel.style.opacity = "";
+    posterLabel.style.cursor = "";
+    videoIndicator.style.backgroundImage = "";
+  }
+  clearRowBtn.textContent = "Sil";
+  return;
+}
+```
+and adding:
+```JavaScript
+videoIndicator.style.backgroundImage = "";
+```
+be enough to fix this issue? 
+
+----------------------------------------------------------------
+
+Can you help me to add an indicator that shows the file upload progress (How many MiBs-or GiBs if the amount is bigger than 1 Gib- or what percantage or a small progress bar or circular one)?" and make the necessary changes? Let's first add only a simple text indicator like "12.3 MiB / 100 MiB (12%)". Maybe instead of showing the total file size here:
+```JavaScript
+const videoSizeContainer = document.createElement("div");
+videoSizeContainer.className = "video-size-container";
+videoSizeContainer.textContent = "Dosya Boyutu: ";
+const videoSize = document.createElement("span");
+videoSize.className = "video-size";
+const fileSizeGBInfo = file.size / (1024 * 1024 * 1024);
+const fileSizeMBInfo = file.size / (1024 * 1024);
+if (fileSizeGBInfo >= 1) {
+    videoSize.textContent = `${fileSizeGBInfo.toFixed(2)} GB`;
+} else if (fileSizeMBInfo >= 1) {
+    videoSize.textContent = `${fileSizeMBInfo.toFixed(2)} MB`;
+} else {
+    videoSize.textContent = `${file.size} bytes`;
+}
+```
+in index.js file lets show the upload progress instead. 

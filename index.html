@@ -16,12 +16,13 @@
     <script src="js/video.min.js" defer></script>
     <script src="js/videojs-mobile-ui.min.js" defer></script>
     <script src="js/bootstrap.bundle.min.js" defer></script>
+    <script src="js/utilities.js" defer></script>
     <script src="js/index.js" defer></script>
     <!-- <script src="js/videojs.hotkeys.latest.min.js" defer></script> -->
     <script src="js/videojs.hotkeys.current-0.2.min.js" defer></script>
   </head>
   <body>
-    
+
     <button type="button" id="settings-button"></button>
     <button type="button" id="show-the-button"></button>
     <!-- <img id="settings-btn" width="28ch" src="./img/settings-white.svg" alt="Settings" /> -->
@@ -159,12 +160,22 @@
                 </fieldset>
                 <fieldset class="video-player-setting-section border px-3">
                   <legend class="float-none w-auto px-1 fs-8 text-muted">Anasayfa Ayarları</legend>
-                    <div class="input-group input-group-sm mb-1">
-                      <div class="form-check form-switch">
-                        <input class="form-check-input" type="checkbox" role="switch" id="show-video-titles" data-key="showVideoTitles">
-                        <label class="form-check-label" for="show-video-titles">Video başlıklarını göster</label>
-                      </div>
+                  <div class="input-group input-group-sm mb-1">
+                    <div class="form-check form-switch">
+                      <input class="form-check-input" type="checkbox" role="switch" id="show-video-titles" data-key="showVideoTitles">
+                      <label class="form-check-label" for="show-video-titles">Video başlıklarını göster</label>
                     </div>
+                    <div class="form-check form-switch">
+                      <input class="form-check-input" type="checkbox" role="switch" id="video-list-covers-screen" data-key="videoListCoversScreen">
+                      <label class="form-check-label" for="video-list-covers-screen">Video listesi ekranı kaplasın</label>
+                    </div>
+                  </div>
+                </fieldset>
+                <fieldset id="storage-settings-section" class="video-player-setting-section border px-3">
+                  <legend class="float-none w-auto px-1 fs-8 text-muted">Depolama Ayarları</legend>
+                  <div class="input-group input-group-sm mb-1">
+                    <button class="btn btn-danger delete-all-btn" type="button">Bütün dosyaları ve profilleri sil</button>
+                  </div>
                 </fieldset>
               </div>
             </form>
@@ -173,37 +184,6 @@
         </div>
       </div>
     </dialog>
-
-    <!-- Custom confirmation modal overlay (div-based, not nested dialog) -->
-    <div id="confirm-modal-overlay" class="confirm-modal-overlay" style="display: none;">
-      <div class="confirm-modal-card">
-        <div class="confirm-modal-header">
-          <h3 id="confirm-modal-title">Onay</h3>
-        </div>
-        <div class="confirm-modal-body">
-          <p id="confirm-modal-message"></p>
-        </div>
-        <div class="confirm-modal-footer">
-          <button type="button" class="btn btn-secondary" id="confirm-modal-cancel-btn">İptal</button>
-          <button type="button" class="btn btn-danger" id="confirm-modal-ok-btn"></button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Custom notification modal overlay (div-based, not nested dialog) -->
-    <div id="notification-modal-overlay" class="notification-modal-overlay" style="display: none;">
-      <div class="notification-modal-card">
-        <div class="notification-modal-header">
-          <h3 id="notification-modal-title">Onay</h3>
-        </div>
-        <div class="notification-modal-body">
-          <p id="notification-modal-message"></p>
-        </div>
-        <div class="notification-modal-footer">
-          <button type="button" class="btn btn-outline-info" id="notification-modal-ok-btn"></button>
-        </div>
-      </div>
-    </div>
 
     <main>
 

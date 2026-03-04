@@ -26,8 +26,6 @@ const removeProfileBtn = document.getElementById("remove-profile-btn");
 const removeAllProfilesBtn = document.getElementById("remove-all-profiles-btn");
 const videoCountValues = [1, 2, 4];
 const settingsCheckBoxes = document.querySelectorAll("#settings-panel-container input[type='checkbox']");
-const removeAllFilesBtn = document.querySelector(".delete-all-btn");
-const storageSettingsSection = document.getElementById("storage-settings-section");
 
 let DEBUGGING = false;
 
@@ -57,7 +55,6 @@ const emojiMap = {
 	edit: "✏️",
 	cancel: "✕",
 	cancel2: "✖️",
-	play: "▶️",
 };
 
 // Video Upload Elements
@@ -70,7 +67,6 @@ let countDownInterval = 2000
 let clickCount = 0;
 const clickCountUpperLimit = 1;
 let intervalId;
-let videoPlaybackInPreviewMode = false;
 
 const state = {
 	profiles: localStorage.getItem("profiles") ? 
@@ -147,9 +143,6 @@ const state = {
 	uiSettings: {
 		showOverlays: localStorage.getItem("showOverlays") ?
 			JSON.parse(localStorage.getItem("showOverlays")) :
-			true,
-		videoListCoversScreen: localStorage.getItem("videoListCoversScreen") ?
-			JSON.parse(localStorage.getItem("videoListCoversScreen")) :
 			true,
 	}
 }
@@ -279,7 +272,6 @@ function saveState() {
 	localStorage.setItem("playbackSettings", JSON.stringify(state.player_settings.playbackSettings));
 	localStorage.setItem("showOverlays", JSON.stringify(state.uiSettings.showOverlays));
 	localStorage.setItem("videos", JSON.stringify(state.profiles.find(p => p.id === state.currentProfileId).videos));
-	localStorage.setItem("videoListCoversScreen", JSON.stringify(state.uiSettings.videoListCoversScreen));
 }
 
 showTheButton.addEventListener("click", () => {
@@ -310,99 +302,6 @@ settingsBtn.addEventListener("click", () => {
 closeSettingsBtns.forEach(btn => {
 	btn.addEventListener("click", () => {
 		settingsPanelContainer.close();
-	});
-});
-
-removeAllFilesBtn.addEventListener("click", async () => {
-	if (state.profiles.every(profile => !profile.videos || profile.videos.length === 0 || profile.videos.every(video => !video.src || video.src === ""))) {
-		if (profileListContainer.querySelector("#remove-all-files-alert")) {
-			return;
-		}
-		const alertDiv = document.createElement("div");
-		alertDiv.className = "alert alert-warning";
-		alertDiv.role = "alert";
-		alertDiv.id = "remove-all-files-alert";
-		alertDiv.textContent = "Silinecek dosya bulunamadı.";
-		storageSettingsSection.appendChild(alertDiv);
-		setTimeout(() => {
-			if (storageSettingsSection.contains(alertDiv)) {
-				storageSettingsSection.removeChild(alertDiv);
-			}
-		}, 3000);
-		return;
-	}
-	const confirmationMessage = `<strong>Tüm dosyaları silmek istediğinize emin misiniz?</strong><br><br>Bu işlem, tüm profillerdeki videoların ve <i>Varsayılan</i> hariç tüm profillerin tarayıcı hafızasından kalıcı olarak silinmesine neden olacak. <strong>Bu işlem geri alınamaz.</strong>`;
-	showConfirmModal("Dikkat", confirmationMessage, "Tümünü Sil").then(async (confirmed) => {
-		if (confirmed) {
-			(async () => {
-				for (const profile of state.profiles) {
-					if (profile.videos && profile.videos.length > 0) {
-						for (const video of profile.videos) {
-							if (video.src !== "") {
-								URL.revokeObjectURL(video.src);
-							}
-							if (video.poster) {
-								URL.revokeObjectURL(video.poster);
-							}
-						}
-					}
-					if (butlerVideosDirectoryHandle && profile.opfsProfileDirectoryHandle) {
-						if (profile.OPFSName !== "Varsayılan") {
-							await butlerVideosDirectoryHandle.removeEntry(profile.opfsProfileDirectoryHandle.name, { recursive: true }).catch(() => {});
-						} else if (profile.OPFSName === "Varsayılan") {
-							// For the default profile, we need to remove all files inside the directory but not the directory itself, since we want to keep the default profile.
-							for await (const entry of profile.opfsProfileDirectoryHandle.values()) {
-								if (entry.kind === "file") {
-									await profile.opfsProfileDirectoryHandle.removeEntry(entry.name).catch(() => {});
-								} else if (entry.kind === "directory") {
-									await profile.opfsProfileDirectoryHandle.removeEntry(entry.name, { recursive: true }).catch(() => {});
-								}
-							}
-						}
-						storageInfo();
-					}
-				}
-			})();
-			state.profiles = [
-				{
-					id: 0,
-					originalName: "Varsayılan",
-					OPFSName: "Varsayılan",
-					displayName: "Varsayılan",
-					opfsProfileDirectoryHandle: null,
-					videoCount: 1,
-					videos: [
-						{
-							id: 0,
-							originalFileName: "",
-							storedFileName: "",
-							displayTitle: "",
-							src: "",
-							poster: "",
-							posterTitle: "",
-							alt: "",
-							currentTime: 0,
-							size: 0,
-						}
-					]
-				}
-			];
-			state.currentProfileId = 0;
-			saveState();
-			renderSourceSelectors();
-			renderProfileList();
-			renderProfileSelectList();
-			renderVideoCountSelector();
-			renderVideoList();
-
-			if (vp.src) {
-				vp.pause();
-				vp.currentTime(0);
-				vp.src = "";
-				vp.poster = "";
-				document.getElementById('vp').style.display = 'none';
-			}
-		}
 	});
 });
 
@@ -730,10 +629,6 @@ document.addEventListener("DOMContentLoaded", async () => {
 		checkbox.addEventListener("change", (e) => {
 			if (key) {
 				switch(key) {
-					case "videoListCoversScreen":
-						state.uiSettings.videoListCoversScreen = e.target.checked;
-						renderVideoList();
-						break;
 					case "showVideoControls":
 						e.target.checked ? vp.controlBar.show() : vp.controlBar.hide();
 						state.player_settings.showVideoControls = e.target.checked;
@@ -1267,23 +1162,6 @@ function renderSourceSelectors() {
 
 			
 			const file = input.files ? input.files[0] : null;
-			// Attach progress callback
-			file._onProgress = function(bytesWritten, totalBytes) {
-				const percent = ((bytesWritten / totalBytes) * 100).toFixed(1);
-				let writtenMiB = bytesWritten / (1024 * 1024);
-				let totalMiB = totalBytes / (1024 * 1024);
-				let writtenStr, totalStr, unit;
-				if (totalBytes >= 1024 * 1024 * 1024) {
-					writtenStr = (bytesWritten / (1024 * 1024 * 1024)).toFixed(2);
-					totalStr = (totalBytes / (1024 * 1024 * 1024)).toFixed(2);
-					unit = 'GiB';
-				} else {
-					writtenStr = writtenMiB.toFixed(2);
-					totalStr = totalMiB.toFixed(2);
-					unit = 'MiB';
-				}
-				videoSize.textContent = `${writtenStr} / ${totalStr} ${unit} (${percent}%)`;
-			};
 			
 			// const videoPosterImages = document.querySelectorAll(".video-poster-img");
 
@@ -1292,77 +1170,8 @@ function renderSourceSelectors() {
 
 			if(!file) {
 				alert("Dosya seçilemedi. Lütfen tekrar deneyin.");
-				// Clean up any possible stuck state
-				activeUploadsSet.delete(video.originalFileName);
-				activeUploadsGlobal.delete(video.id);
 				return;
 			}
-
-			const videoTitleAndPlayButtonContainer = document.createElement("div");
-			videoTitleAndPlayButtonContainer.className = "video-title-and-play-button-container";
-
-			const playButton = document.createElement("button");
-			playButton.type = "button";
-			playButton.className = "btn btn-sm btn-secondary play-video-btn settings-btn";
-			playButton.textContent = emojiMap.play;
-			playButton.addEventListener("click", () => {
-				videoPlaybackInPreviewMode = true;
-				const playerContainer = document.getElementById('vp');
-				// playerContainer.dataset.videoId = video.id;
-				const videoUrl = video.src;
-				// console.log("Playing video URL:", videoUrl);
-				// 1. Show player
-				playerContainer.style.display = 'block';
-				vp.src({ src: videoUrl, type: 'video/mp4'});
-				openFullscreen(vp);
-				state.currentlyPlayingVideoId = video.id;
-				vp.volume(state.player_settings.playbackSettings.rememberVolumeLevel ? state.currentVolume : 0.8);
-				// saveState();
-				vp.play();
-				settingsPanelContainer.close();
-			});
-
-			playButton.disabled = true; // Disable play button until video is fully loaded and ready
-
-			const videoTitleAndSizeInfoContainer = document.createElement("div");
-			videoTitleAndSizeInfoContainer.className = "video-title-and-size-info-container";
-			const videoTitleContainer = document.createElement("div");
-			videoTitleContainer.className = "source-selection-section-video-title-container";
-
-			const videoTitle = document.createElement("div");
-			videoTitle.className = "source-selection-section-video-title";
-			videoTitle.textContent = `${file.name}` || "";
-
-			const videoSizeContainer = document.createElement("div");
-			videoSizeContainer.className = "video-size-container";
-			videoSizeContainer.textContent = "Dosya Boyutu: ";
-			const videoSize = document.createElement("span");
-			videoSize.className = "video-size";
-			const fileSizeGBInfo = file.size / (1024 * 1024 * 1024);
-			const fileSizeMBInfo = file.size / (1024 * 1024);
-			if (fileSizeGBInfo >= 1) {
-				videoSize.textContent = `${fileSizeGBInfo.toFixed(2)} GB`;
-			} else if (fileSizeMBInfo >= 1) {
-				videoSize.textContent = `${fileSizeMBInfo.toFixed(2)} MB`;
-			} else {
-				videoSize.textContent = `${file.size} bytes`;
-			}	
-			
-			videoSizeContainer.appendChild(videoSize);
-			rowContainer.appendChild(row);
-			videoTitleAndSizeInfoContainer.appendChild(videoSizeContainer);
-			videoTitleAndSizeInfoContainer.appendChild(videoTitle);
-			
-			if (videoTitle.textContent === "") {
-				videoTitleAndSizeInfoContainer.classList.add("video-display-title-empty");
-			} else {
-				videoTitleAndSizeInfoContainer.classList.remove("video-display-title-empty");
-			}
-
-			videoTitleContainer.appendChild(videoTitleAndSizeInfoContainer);
-			videoTitleAndPlayButtonContainer.appendChild(videoTitleContainer);
-			videoTitleAndPlayButtonContainer.appendChild(playButton);
-			rowContainer.appendChild(videoTitleAndPlayButtonContainer);
 
 			video.originalFileName = file.name;
 			
@@ -1372,17 +1181,11 @@ function renderSourceSelectors() {
 				message = "Bu video zaten yükleme aşamasında.";
 				showNotificationModalDialog("Dikkat", message, "Tamam");
 				input.value = "";
-				// Clean up any possible stuck state
-				// activeUploadsSet.delete(file.name);
-				// activeUploadsGlobal.delete(video.id);
 				// Reenable input and label since we're not proceeding with the upload
+				input.disabled = false;
 				videoLabel.style.pointerEvents = "";
 				videoLabel.style.opacity = "";
 				videoLabel.style.cursor = "";
-
-				playButton.disabled = true;
-
-				videoIndicator.style.backgroundImage = "";
 
 				if (video.poster === "") {
 					posterUploadInput.disabled = true;
@@ -1406,12 +1209,8 @@ function renderSourceSelectors() {
 			const shouldUpload = await shouldUploadVideo(file);
 			
 			if(!shouldUpload.supported) {
-				showNotificationModalDialog("Dikkat", shouldUpload.reason, "Tamam");
-				rowContainer.removeChild(videoTitleAndPlayButtonContainer);
+				alert(shouldUpload.reason);
 				input.value = "";
-				// Clean up any possible stuck state
-				activeUploadsSet.delete(file.name);
-				activeUploadsGlobal.delete(video.id);
 				// Reenable input and label since we're not proceeding with the upload
 				input.disabled = false;
 				videoLabel.style.pointerEvents = "";
@@ -1419,10 +1218,10 @@ function renderSourceSelectors() {
 				videoLabel.style.cursor = "";
 
 				// Also re-enable poster upload input and fade it out
-				// posterUploadInput.disabled = false;
-				// posterLabel.style.pointerEvents = "";
-				// posterLabel.style.opacity = "";
-				// posterLabel.style.cursor = "";
+				posterUploadInput.disabled = false;
+				posterLabel.style.pointerEvents = "";
+				posterLabel.style.opacity = "";
+				posterLabel.style.cursor = "";
 				videoIndicator.style.backgroundImage = "";
 				clearRowBtn.textContent = "Sil";
 				return;
@@ -1431,9 +1230,6 @@ function renderSourceSelectors() {
 				const proceedWithoutDimensions = await showConfirmModal("Dikkat", message, "Devam Et");
 				if (!proceedWithoutDimensions) {
 					input.value = "";
-					// Clean up any possible stuck state
-					activeUploadsSet.delete(file.name);
-					activeUploadsGlobal.delete(video.id);
 					// Reenable input and label since we're not proceeding with the upload
 					input.disabled = false;
 					videoLabel.style.pointerEvents = "";
@@ -1447,7 +1243,7 @@ function renderSourceSelectors() {
 					posterLabel.style.cursor = "";
 					videoIndicator.style.backgroundImage = "";
 					clearRowBtn.textContent = "Sil";
-				return;
+					return;
 				}
 			}
 			if (video.src && video.src.startsWith('blob:')) {
@@ -1551,9 +1347,6 @@ function renderSourceSelectors() {
 					currentProfile.opfsProfileDirectoryHandle.removeEntry(`thumbnail_${file.name}.jpg`).catch(() => {});
 					currentProfile.opfsProfileDirectoryHandle.removeEntry(file.name).catch(() => {});
 				}
-				// Clean up any possible stuck state
-				activeUploadsSet.delete(file.name);
-				activeUploadsGlobal.delete(video.id);
 				videoIndicator.style.backgroundImage = "none";
 				queuedOPFSOperationsCount--;
 				// Re-enable input on error
@@ -1619,7 +1412,7 @@ function renderSourceSelectors() {
 				}
 			} finally {
 				activeUploadsGlobal.delete(video.id);
-				activeUploadsSet.delete(file.name);
+				activeUploadsSet.delete(video.storedFileName);
 				input.disabled = false;
 				videoLabel.style.pointerEvents = "";
 				videoLabel.style.opacity = "";
@@ -1632,7 +1425,6 @@ function renderSourceSelectors() {
 				// Restore clear button text back to "Sil" (Delete)
 				clearRowBtn.textContent = "Sil";
 				input.value = ""; // allow selecting same file again
-				playButton.disabled = false; // Enable play button after upload completes (successfully or with error, since video won't be playable if upload failed)
 			}
 
 			// Only proceed with file reads and UI updates if upload was successful
@@ -1799,12 +1591,11 @@ function renderSourceSelectors() {
 		clearRowBtn.textContent = "Sil";
 		clearRowBtn.addEventListener("click", async () => {
 			const active = activeUploadsGlobal.get(video.id);
-			// Always clean up both sets regardless of state
-			activeUploadsSet.delete(video.originalFileName);
-			activeUploadsGlobal.delete(video.id);
 			if (video.originalFileName && !active) {
+				activeUploadsSet.delete(video.originalFileName);
 				video.originalFileName = "";
-				controller.abort();
+				// showNotificationModal("Dikkat", "Yükleme iptal edildi", "Tamam");
+				controller.abort()
 				clearRowBtn.textContent = "Sil";
 				videoIndicator.style.backgroundImage = "none";
 				posterUploadInput.disabled = true;
@@ -1815,6 +1606,7 @@ function renderSourceSelectors() {
 				if (!activeUploadsGlobal.size && !activeUploadsSet.size){
 					renderSourceSelectors();
 				}
+				video.originalFileName = "";
 				video.storedFileName = "";
 				video.displayTitle = "";
 				video.src = "";
@@ -1828,6 +1620,7 @@ function renderSourceSelectors() {
 					URL.revokeObjectURL(video.poster);
 				}
 				if (butlerVideosDirectoryHandle && currentProfile.opfsProfileDirectoryHandle && video.storedFileName) {
+				// if (butlerVideosDirectoryHandle && currentProfile.opfsProfileDirectoryHandle) {
 					currentProfile.opfsProfileDirectoryHandle.removeEntry(video.storedFileName).then(() => {
 						storageInfo();
 					}).catch(err => {
@@ -1842,16 +1635,25 @@ function renderSourceSelectors() {
 						alert("Video posterini silerken bir hata oluştu");
 					});
 				}
+				activeUploadsGlobal.delete(video.id);
+				activeUploadsSet.delete(video.originalFileName);
 				return;
 			}
 
+			console.log(active);
 			if (active) {
 				active.controller.abort();
+				
 				try {
 					await active.promise;
 				} catch (e) {
 					// ignore abort error
 				}
+				
+				// activeUploadsSet.delete(active.storedFileName);
+				
+				// activeUploadsGlobal.delete(video.id);
+
 				clearRowBtn.textContent = "Sil";
 				if (video.src === "") {
 					posterUploadInput.disabled = true;
@@ -1864,6 +1666,7 @@ function renderSourceSelectors() {
 					posterLabel.style.opacity = "";
 					posterLabel.style.cursor = "";
 					videoIndicator.style.backgroundImage = "";
+
 				}
 			}
 
@@ -1934,30 +1737,6 @@ function renderSourceSelectors() {
 		row.appendChild(rowNumber);
 		row.appendChild(forms);
 		row.appendChild(clearRowBtn);
-
-		const videoTitleAndPlayButtonContainer = document.createElement("div");
-		videoTitleAndPlayButtonContainer.className = "video-title-and-play-button-container";
-
-		const playButton = document.createElement("button");
-		playButton.type = "button";
-		playButton.className = "btn btn-sm btn-secondary play-video-btn settings-btn";
-		playButton.textContent = emojiMap.play;
-		playButton.addEventListener("click", () => {
-			videoPlaybackInPreviewMode = true;
-			const playerContainer = document.getElementById('vp');
-			// playerContainer.dataset.videoId = video.id;
-			const videoUrl = video.src;
-			// console.log("Playing video URL:", videoUrl);
-			// 1. Show player
-    		playerContainer.style.display = 'block';
-			vp.src({ src: videoUrl, type: 'video/mp4'});
-			openFullscreen(vp);
-			state.currentlyPlayingVideoId = video.id;
-			vp.volume(state.player_settings.playbackSettings.rememberVolumeLevel ? state.currentVolume : 0.8);
-			// saveState();
-			vp.play();
-			settingsPanelContainer.close();
-		});
 
 		const videoTitleAndSizeInfoContainer = document.createElement("div");
 		videoTitleAndSizeInfoContainer.className = "video-title-and-size-info-container";
@@ -2091,10 +1870,8 @@ function renderSourceSelectors() {
 
 		videoTitleContainer.appendChild(videoTitleAndSizeInfoContainer);
 		videoTitleContainer.appendChild(videoTitleEditingButtonContainer);
-		videoTitleAndPlayButtonContainer.appendChild(videoTitleContainer);
-		videoTitleAndPlayButtonContainer.appendChild(playButton);
 		if (video.src && video.src !== "") {
-			rowContainer.appendChild(videoTitleAndPlayButtonContainer);
+			rowContainer.appendChild(videoTitleContainer);
 		}
 		
 		sourceSelectorSection.appendChild(rowContainer);
@@ -2154,13 +1931,7 @@ function updateVideoList() {
 // 	fitThumbnailsInViewport();
 // }, false);
 
-window.addEventListener('resize', () => {
-	if (state.uiSettings.videoListCoversScreen) {
-		fitThumbnailsInViewport2(state.profiles.find(p => p.id === state.currentProfileId).videoCount);
-	} else {
-		fitThumbnailsInViewport(state.profiles.find(p => p.id === state.currentProfileId).videoCount);
-	}
-});
+window.addEventListener('resize', () => fitThumbnailsInViewport(state.profiles.find(p => p.id === state.currentProfileId).videoCount));
 
 async function renderVideoList() {
 	const currentProfile = state.profiles.find(p => p.id === state.currentProfileId);
@@ -2295,11 +2066,7 @@ async function renderVideoList() {
 		}
 	}
 
-	if (state.uiSettings.videoListCoversScreen) {
-		fitThumbnailsInViewport2(currentProfile.videos.length);
-	} else {
-		fitThumbnailsInViewport(currentProfile.videos.length);
-	}
+	fitThumbnailsInViewport(currentProfile.videos.length);
 }
 
 function generateThumbnail(videoSrc) {
@@ -2365,7 +2132,6 @@ function fitThumbnailsInViewport(videoCount) {
 			} else {
 				cols = 2;
 				rows = 2;
-				videoListGrid.style.columnGap = `8px`;
 			}
 			break;
 		default:
@@ -2384,85 +2150,6 @@ function fitThumbnailsInViewport(videoCount) {
 		height = maxHeight - 8;
 		width = height * 16 / 9;
 	}
-
-	// debug info start
-	// console.log("window.innerWidth / window.innerHeight: ", window.innerWidth / window.innerHeight);
-	// console.log(`Calculated thumbnail size: ${width}x${height}`);
-	// console.log(`Grid layout: ${cols} columns x ${rows} rows`);
-	// console.log(`Max cell size: ${maxWidth}x${maxHeight}`);
-	// console.log(isPortrait ? "Portrait orientation" : "Landscape orientation");
-	// console.log(`Window size: ${vw}x${vh}`);
-	// debug info end
-
-	document.querySelectorAll('.video-list-item').forEach(el => {
-		el.style.width = `${width}px`;
-		el.style.height = `${height}px`;
-	});
-}
-
-function fitThumbnailsInViewport2(videoCount) {
-	const vw = window.innerWidth;
-	const vh = window.innerHeight;
-
-	const isPortrait = vh > vw;
-
-	let padding = 2; // 4px padding on each side
-
-	videoListGrid.style.padding = `${padding}px`;
-
-	let width, height;
-
-	let cols, rows;
-	switch (videoCount) {
-		case 1:
-			cols = 1;
-			rows = 1;
-			width = vw - padding * 2;
-			height = vh - padding * 2;
-			break;
-		case 2:
-			if (isPortrait) {
-				cols = 1;
-				rows = 2;
-				width = vw - padding * 2;
-				height = (vh / 2) - padding * 2;
-				videoListGrid.style.columnGap = `0px`;
-				videoListGrid.style.rowGap = `${padding}px`;
-			} else {
-				cols = 2;
-				rows = 1;
-				width = (vw / 2) - padding * 4;
-				height = vh - padding * 2;
-				videoListGrid.style.columnGap = `${padding * 2 - 1}px`;
-				videoListGrid.style.rowGap = `0px`;
-			}
-			break;
-		case 4:
-			if (isPortrait) {
-				cols = 1;
-				rows = 4;
-				width = vw - padding * 2;
-				height = (vh / 4) - padding * 2 - padding * 3 / 4; // extra 3/4 padding to account for 4 rows
-				videoListGrid.style.columnGap = `0px`;
-				videoListGrid.style.rowGap = `${padding}px`;
-			} else {
-				cols = 2;
-				rows = 2;
-				padding = 4; // increase padding for 2x2 to prevent thumbnails from feeling cramped
-				width = (vw / 2) - padding * 2;
-				height = (vh / 2) - padding * 2;
-				videoListGrid.style.columnGap = `${padding}px`;
-				videoListGrid.style.rowGap = `${padding- 2}px`;
-			}
-			break;
-		default:
-			cols = videoCount;
-			rows = 1;
-	}
-
-
-	// const width = vw / cols;
-	// const height = vh / rows;
 
 	// debug info start
 	// console.log("window.innerWidth / window.innerHeight: ", window.innerWidth / window.innerHeight);
@@ -2529,11 +2216,6 @@ function initSettingsPanelInputs() {
 	settingsCheckBoxes.forEach(checkbox => {
 		const datasetKey = checkbox.dataset.key;
 		switch(datasetKey) {
-			case "videoListCoversScreen":
-				state.uiSettings.videoListCoversScreen
-					? checkbox.checked = true
-					: checkbox.checked = false; 
-				break;
 			case "showVideoControls":
 				state.player_settings.showVideoControls 
 					? checkbox.checked = true
@@ -2798,11 +2480,6 @@ async function openFullscreen(player) {
 		
 		// URL.revokeObjectURL(vp.src());
 		document.removeEventListener('fullscreenchange', onFullscreenChange);
-		
-		if (videoPlaybackInPreviewMode)	{
-			settingsPanelContainer.showModal();
-			videoPlaybackInPreviewMode = false;
-		}
 	};
 
 	// When video exits before ending, hide the player again but don't reset time
@@ -2818,10 +2495,6 @@ async function openFullscreen(player) {
 		
 		// URL.revokeObjectURL(vp.src());
 		document.removeEventListener('fullscreenchange', onFullscreenChange);
-		if (videoPlaybackInPreviewMode)	{
-			settingsPanelContainer.showModal();
-			videoPlaybackInPreviewMode = false;
-		}
 	};
 
 	function onFullscreenChange() {
