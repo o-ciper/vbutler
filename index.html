@@ -5,6 +5,8 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>VButler Video Oynatıcı</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#222">
     <link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
     <link rel="stylesheet" href="css/style.css">
     <!-- <link href="css/video-js.min.css" rel="stylesheet"> -->
@@ -23,6 +25,18 @@
     <script src="js/videojs.hotkeys.current-0.2.min.js" defer></script>
   </head>
   <body>
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', function() {
+          navigator.serviceWorker.register('service-worker.js').then(function(registration) {
+            // Registration successful
+          }, function(err) {
+            // Registration failed
+            console.warn('ServiceWorker registration failed:', err);
+          });
+        });
+      }
+    </script>
 
     <button type="button" id="settings-button"></button>
     <button type="button" id="show-the-button"></button>

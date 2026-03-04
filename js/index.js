@@ -2,6 +2,52 @@
 // const player = document.getElementById("player");
 // const pb = document.getElementById("pb");
 
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.addEventListener('controllerchange', function() {
+    showUpdatePrompt();
+  });
+
+  window.addEventListener('load', function() {
+    navigator.serviceWorker.register('service-worker.js').then(function(registration) {
+      if (registration.waiting) {
+        showUpdatePrompt();
+      }
+      registration.addEventListener('updatefound', function() {
+        const newWorker = registration.installing;
+        newWorker.addEventListener('statechange', function() {
+          if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+            showUpdatePrompt();
+          }
+        });
+      });
+    });
+  });
+}
+
+function showUpdatePrompt() {
+  if (document.getElementById('sw-update-prompt')) return;
+  const prompt = document.createElement('div');
+  prompt.id = 'sw-update-prompt';
+  prompt.style.position = 'fixed';
+  prompt.style.bottom = '24px';
+  prompt.style.left = '50%';
+  prompt.style.transform = 'translateX(-50%)';
+  prompt.style.background = '#222';
+  prompt.style.color = '#fff';
+  prompt.style.padding = '16px 24px';
+  prompt.style.borderRadius = '8px';
+  prompt.style.zIndex = '9999';
+  prompt.textContent = 'Yeni bir güncelleme mevcut! Yenilemek için tıklayın.';
+  prompt.style.cursor = 'pointer';
+  prompt.onclick = function() {
+    if (navigator.serviceWorker.controller) {
+      navigator.serviceWorker.controller.postMessage({ type: 'SKIP_WAITING' });
+    }
+    window.location.reload();
+  };
+  document.body.appendChild(prompt);
+}
+
 const html = document.documentElement;
 const body = document.querySelector("body");
 
