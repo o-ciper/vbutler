@@ -3,10 +3,19 @@
   <head>
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0 viewport-fit=cover user-scalable=no maximum-scale=1.0">
     <title>VButler Video Oynatıcı</title>
     <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#222">
+    <meta
+      name="theme-color"
+      content="#f5f5f5" />
+    <!-- <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes"> -->
+    <meta name="mobile-web-app-capable" content="translucent">
+    <meta name="apple-mobile-web-app-capable" content="translucent">
+    <!-- possible content values: default, black or black-translucent -->
+    <meta name="apple-mobile-web-app-status-bar-style"
+    content="black-translucent">
     <link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
     <link rel="stylesheet" href="css/style.css">
     <!-- <link href="css/video-js.min.css" rel="stylesheet"> -->
@@ -40,7 +49,6 @@
 
     <button type="button" id="settings-button"></button>
     <button type="button" id="show-the-button"></button>
-    <!-- <img id="settings-btn" width="28ch" src="./img/settings-white.svg" alt="Settings" /> -->
     <dialog id="settings-panel-container">
       <div class="dialog-inner">
         <button type="button" class="btn-close settings-btn close-settings-btn" id="settings-panel-close-settings-btn" aria-label="Close"></button>
@@ -174,7 +182,7 @@
                   </div>
                 </fieldset>
                 <fieldset class="video-player-setting-section border px-3">
-                  <legend class="float-none w-auto px-1 fs-8 text-muted">Anasayfa Ayarları</legend>
+                  <legend class="float-none w-auto px-1 fs-8 text-muted">Görünüm Ayarları</legend>
                   <div class="input-group input-group-sm mb-1">
                     <div class="form-check form-switch">
                       <input class="form-check-input" type="checkbox" role="switch" id="show-video-titles" data-key="showVideoTitles">
@@ -184,12 +192,22 @@
                       <input class="form-check-input" type="checkbox" role="switch" id="video-list-covers-screen" data-key="videoListCoversScreen">
                       <label class="form-check-label" for="video-list-covers-screen">Video listesi ekranı kaplasın</label>
                     </div>
+                    <div class="form-check form-switch">
+                      <input class="form-check-input" type="checkbox" role="switch" id="theme-switch" data-key="userTheme">
+                      <label class="form-check-label" for="theme-switch"><span id="theme-icon"></span> Tema: <span id="theme-status" style="margin-left:8px;font-size:0.9rem;"></span></label>
+                    </div>
                   </div>
                 </fieldset>
                 <fieldset id="storage-settings-section" class="video-player-setting-section border px-3">
                   <legend class="float-none w-auto px-1 fs-8 text-muted">Depolama Ayarları</legend>
                   <div class="input-group input-group-sm mb-1">
                     <button class="btn btn-danger delete-all-btn" type="button">Bütün dosyaları ve profilleri sil</button>
+                  </div>
+                </fieldset>
+                <fieldset id="app-settings-section" class="video-player-setting-section border px-3">
+                  <legend class="float-none w-auto px-1 fs-8 text-muted">Uygulama Ayarları</legend>
+                  <div class="input-group input-group-sm mb-1">
+                    <button class="btn btn-primary app-settings-btn install-pwa-btn" type="button">Uygulamayı Cihaza Kur</button>
                   </div>
                 </fieldset>
               </div>
@@ -202,7 +220,8 @@
 
     <main>
 
-      <section class="video-list-grid" id="video-players">
+      <!-- <section class="video-list-grid" id="video-players"> -->
+      <section class="video-list-grid-covers-screen" id="video-players">
       </section>
       
       <video

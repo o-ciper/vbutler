@@ -3,9 +3,9 @@
   "short_name": "VButler",
   "description": "A video management app with offline support and installable PWA features.",
   "start_url": "index.html",
-  "display": "fullscreen",
-  "background_color": "#222",
-  "theme_color": "#222",
+  "display": "standalone",
+  "background_color": "#333",
+  "theme_color": "#000",
   "orientation": "any",
   "scope": ".",
   "icons": [
@@ -20,5 +20,11 @@
       "type": "image/png"
     }
   ],
-  "prefer_related_applications": false
+  "related_applications": [
+        {
+            "platform": "webapp",
+            "url": "manifest.json",
+            "id": "https://localhost:5500"
+        }
+    ]
 }

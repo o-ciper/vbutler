@@ -1,3 +1,9 @@
+function setViewportHeight() {
+  // 1% of the viewport height
+  const vh = window.innerHeight * 0.01;
+  document.documentElement.style.setProperty('--vh', `${vh}px`);
+}
+
 /* Notification Modal Utility With Dialog Element */
 function showNotificationModalDialog(title, message, okButtonText) {
     const notificationDialog = document.createElement("dialog");
@@ -411,6 +417,9 @@ function isMobileDevice() {
   );
 };
 
+function pwaMode() {
+  return window.matchMedia('(display-mode: standalone)').matches || window.matchMedia('(display-mode: fullscreen)').matches || window.matchMedia('(display-mode: minimal-ui)').matches || navigator.standalone === true;
+}
 
 const videoFileTypes = [
 	"video/1d-interleaved-parityfec",

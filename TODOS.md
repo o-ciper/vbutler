@@ -6,7 +6,7 @@
 - [x] Warn the user if there are already videos in the profile when deleting the profile.
 - [x] Finish adding seperate poster functionality for a video.
 - [x] Change style for the video and poster upload rows for aesthetics.
-- [ ] PWA (installable, full screen, offline functionality etc.)
+- [x] PWA (installable, full screen, offline functionality etc.)
 - [x] Make video title editable by the user
 - [x] Show an indicator while a video is uploading to OPFS
 - [x] There is a problem when uploading more than one video simultaneously. For example when a video is large it takes some time to upload it and I try to upload another video. This causes a problem. Look into it. -- Added some code. Seems ok for now.
@@ -29,3 +29,4 @@
 - [x] Check if removing profiles and files in Firefox works.
 - [ ] Disable soundbar auto hide.
 - [ ] Maybe add subtitle support (uploading a subtitle as well)
+- [x] Dark - Light theme selection

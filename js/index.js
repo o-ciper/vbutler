@@ -1,3 +1,109 @@
+// PWA install button logic
+let deferredPrompt = null;
+const installBtn = document.querySelector('.install-pwa-btn');
+const appSettingsSection = document.getElementById("app-settings-section");
+
+function updateInstallBtnVisibility() {
+	if (!installBtn) {
+		if (appSettingsSection.querySelector(".input-group").children.length < 2) {
+			appSettingsSection.style.display = 'none';
+		}
+		return;
+	}
+	// Hide if already installed or unsupported
+	if (window.matchMedia('(display-mode: standalone)').matches || window.matchMedia('(display-mode: fullscreen)').matches) {
+		installBtn.style.display = 'none';
+		if (appSettingsSection.querySelector(".input-group").children.length < 2) {
+			appSettingsSection.style.display = 'none';
+		}
+		return;
+	}
+	if (!deferredPrompt) {
+		installBtn.style.display = 'none';
+		if (appSettingsSection.querySelector(".input-group").children.length < 2) {
+			appSettingsSection.style.display = 'none';
+		}
+	} else {
+		installBtn.style.display = '';
+		installBtn.disabled = false;
+		appSettingsSection.style.display = '';
+	}
+}
+
+window.addEventListener('beforeinstallprompt', (e) => {
+	e.preventDefault();
+	deferredPrompt = e;
+	updateInstallBtnVisibility();
+});
+
+window.addEventListener('appinstalled', () => {
+	deferredPrompt = null;
+	updateInstallBtnVisibility();
+});
+
+if (installBtn) {
+	installBtn.addEventListener('click', async () => {
+		if (!deferredPrompt) return;
+		deferredPrompt.prompt();
+		const choiceResult = await deferredPrompt.userChoice;
+		deferredPrompt = null;
+		updateInstallBtnVisibility();
+	});
+}
+
+document.addEventListener('DOMContentLoaded', updateInstallBtnVisibility);
+
+
+// Theme switching logic
+const themeSwitchBtn = document.getElementById('theme-switch');
+const themeStatus = document.getElementById('theme-status');
+const themeIcon = document.getElementById('theme-icon');
+const metaThemeColor = document.querySelector('meta[name="theme-color"]');
+
+function getSystemTheme() {
+	return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+}
+
+function applyTheme(theme) {
+	document.documentElement.setAttribute('data-bs-theme', theme);
+	document.documentElement.setAttribute('data-theme', theme);
+	themeStatus.textContent = theme === 'dark' ? 'Koyu' : 'Açık';
+	themeIcon.textContent = theme === 'dark' ? '🌙' : '☀️';
+	theme === 'dark' ? themeSwitchBtn.setAttribute('aria-label', 'Temayı Açık Yap') : themeSwitchBtn.setAttribute('aria-label', 'Temayı Koyu Yap');
+	metaThemeColor.setAttribute('content', theme === 'dark' ? '#222222' : '#f5f5f5');
+}
+
+function getSavedTheme() {
+	return localStorage.getItem('userTheme');
+}
+
+function setTheme(theme) {
+	localStorage.setItem('userTheme', theme);
+	applyTheme(theme);
+}
+
+function initTheme() {
+	const saved = getSavedTheme();
+	if (saved) {
+		applyTheme(saved);
+	} else {
+		applyTheme(getSystemTheme());
+	}
+}
+
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
+	if (!getSavedTheme()) {
+		applyTheme(e.matches ? 'dark' : 'light');
+	}
+});
+
+themeSwitchBtn && themeSwitchBtn.addEventListener('click', () => {
+	const current = document.documentElement.getAttribute('data-theme') || getSystemTheme();
+	const next = current === 'dark' ? 'light' : 'dark';
+	setTheme(next);
+});
+
+initTheme();
 //const videoPlayers = document.getElementById("video-players");
 // const player = document.getElementById("player");
 // const pb = document.getElementById("pb");
@@ -104,6 +210,8 @@ const emojiMap = {
 	cancel: "✕",
 	cancel2: "✖️",
 	play: "▶️",
+	lightTheme: "☀️",
+	darkTheme: "🌙",
 };
 
 // Video Upload Elements
@@ -269,7 +377,7 @@ let opfsInitPromise = (async function getOpfsRoot(){
 
 async function cacheVideoFileToOPFS(e) {
     const blobData = e.target.files[0];
-	const thumbnailBlobData = await generateThumbnail(URL.createObjectURL(blobData)).then(thumbnailUrl => {
+	const thumbnailBlobData = await generateThumbnail(URL.createObjectURL(blobData)).then(async thumbnailUrl => {
 		return fetch(thumbnailUrl).then(res => res.blob());	
 	}).catch(err => {
 		console.error("Error generating thumbnail blob: ", err);
@@ -652,8 +760,12 @@ removeAllProfilesBtn.addEventListener("click", async () => {
 	renderVideoList();
 });
 
-// TODO: Add settings section for player controls (like volume, autoplay, loop, etc.) and save those settings in state and apply them to the player instance
 document.addEventListener("DOMContentLoaded", async () => {
+	window.addEventListener('resize', setViewportHeight);
+	window.addEventListener('orientationchange', setViewportHeight);
+	window.addEventListener('DOMContentLoaded', setViewportHeight);
+	setViewportHeight();
+	initTheme();
 	await opfsInitPromise;
 	storageInfo();
 	vp = videojs("vp", {
@@ -662,61 +774,15 @@ document.addEventListener("DOMContentLoaded", async () => {
 		autoplay: false,
 		preload: 'auto',
 		loadingSpinner: true,
-		// userActions: {
-		// 	hotkeys: true,
-		//  click: false,
-		//  click: myClickHandler,
-		//  doubleClick: myDoubleClickHandler
-		// },
 		playbackRates: [], // ← disables PlaybackRateMenuButton entirely
 		controlBar: {
 			pictureInPictureToggle: false, // ← disables PiP completely
-			remainingTimeDisplay: false, // ← disables just the current time text
-			// VolumePanel: {
-			// 	inline: false
-			// },
-			// children: [
-			// 	'PlayToggle',
-			// 	'ProgressControl',
-			// 	// 'TimeDisplay',
-			// 	// 'CurrentTimeDisplay',
-			// 	// 'TimeDivider',
-			// 	// 'DurationDisplay',
-			// 	// 'RemainingTimeDisplay',
-			// 	'VolumePanel',
-			// 	'FullscreenToggle',
-			// 	// 'PlayToggle',
-			// 	// 'ProgressControl',
-			// 	// 'TimeDisplay',           // ← THIS is the correct component
-			// 	// 'RemainingTimeDisplay',  // optional
-			// 	// 'VolumePanel',
-			// 	// 'FullscreenToggle',
-			// ],
-			// skipButtons: {
-			// 	forward: 5
-			// },
+			remainingTimeDisplay: false, // ← disables just the current
 		},
-		// userActions: {
-		// 	hotkeys: function(event) {
-		// 		// `this` is the player in this context
-
-		// 		// `x` key = pause
-		// 		if (event.which === 88) {
-		// 			this.pause();
-		// 		}
-		// 		// `y` key = play
-		// 		if (event.which === 89) {
-		// 			this.play();
-		// 		}
-		// 	}
-		// },
 		plugins: {
 			hotkeys: {
 				volumeStep: 0.05,
 				seekStep: 5,
-				// enableModifiersForNumbers: false,
-				// enableFullscreen: false,
-				// enableMute: true,
 			},
 		},
 	});
@@ -771,9 +837,6 @@ document.addEventListener("DOMContentLoaded", async () => {
 		time: controlBar.getChild('CurrentTimeDisplay'),
 		timeDivider: controlBar.getChild('TimeDivider'),
 		duration: controlBar.getChild('DurationDisplay'),
-		// remaining: controlBar.getChild('RemainingTimeDisplay'),
-		// rate: controlBar.getChild('PlaybackRateMenuButton'),
-		// pip: controlBar.getChild('PictureInPictureToggle'),
 		fullscreen: controlBar.getChild('FullscreenToggle'),
 	};
 
@@ -814,8 +877,6 @@ document.addEventListener("DOMContentLoaded", async () => {
 						const enabled = e.target.checked;
 						state.player_settings.playbackSettings.touchControlsEnabled = enabled;
 						initPlayer(enabled);
-						// setTouchControls(enabled);
-						// vp.mobileUi().options_.touchControls.disabled = !enabled;
 						break;
 					default:
 						state.player_settings.controlBarChildrenState[key] = e.target.checked;
@@ -824,8 +885,6 @@ document.addEventListener("DOMContentLoaded", async () => {
 				}
 				saveState();
 			}
-			// TODO: implement the following funnctions to apply the changes immediately when a setting is toggled, instead of waiting for the user to close the settings dialog:
-			// applyControlState();
 		});
 	});
 
@@ -922,6 +981,9 @@ document.addEventListener("DOMContentLoaded", async () => {
 	renderProfileList();
 	renderVideoCountSelector();
 	renderSourceSelectors();
+	// if (appSettingsSection.querySelector(".input-group").children.length === 0) {
+	// 	appSettingsSection.style.display = "none";
+	// }
 });
 
 function renderProfileSelectList() {
@@ -1044,7 +1106,6 @@ function renderProfileList() {
 				label.contentEditable = false;
 				label.style.border = "none";
 				label.style.cursor = "pointer";
-				// const currentProfile = state.profiles.find(p => p.id === profile.id);
 				const profileName = profile.displayName;
 				if (profileName === label.textContent.trim()) {
 					label.contentEditable = false;
@@ -1203,9 +1264,8 @@ function renderSourceSelectors() {
 
 	const removeAllSourcesBtn = document.createElement("button");
 	removeAllSourcesBtn.type = "button";
-	removeAllSourcesBtn.className = "btn btn-sm btn-warning remove-all-sources-btn settings-btn";
+	removeAllSourcesBtn.className = "btn btn-sm btn-danger remove-all-sources-btn settings-btn";
 	removeAllSourcesBtn.id = "remove-all-sources-btn";
-	// removeAllSourcesBtn.textContent = "🗑️";
 	removeAllSourcesBtn.textContent = "Sil";
 	removeAllSourcesBtn.addEventListener("click", async () => {
 		if (currentProfile.videos.some(video => video.src && video.src !== "")) {
@@ -1239,7 +1299,6 @@ function renderSourceSelectors() {
 		}
 		if (butlerVideosDirectoryHandle && currentProfile.opfsProfileDirectoryHandle) {
 			await clearDirectoryContents(currentProfile.opfsProfileDirectoryHandle);
-			// await butlerVideosDirectoryHandle.removeEntry(currentProfile.opfsProfileDirectoryHandle.name, { recursive: true });
 			storageInfo();
 		}
 		saveState();
@@ -1284,11 +1343,7 @@ function renderSourceSelectors() {
 
 		const videoIndicator = document.createElement("span");
 		videoIndicator.className = "present-or-absent";
-		// const sourceIsUploadingIndicatorPath = "../img/tube-spinner-x27.svg";
 		const sourceIsUploadingIndicatorPath = new URL('img/tube-spinner-x27.svg', document.baseURI).href;
-
-
-		// videoIndicator.textContent = emojiMap.unchecked;
 
 		const videoUploadInput = document.createElement("input");
 		videoUploadInput.type = "file";
@@ -1337,10 +1392,6 @@ function renderSourceSelectors() {
 				}
 				videoSize.textContent = `${writtenStr} / ${totalStr} ${unit} (${percent}%)`;
 			};
-			
-			// const videoPosterImages = document.querySelectorAll(".video-poster-img");
-
-			// const videoTestElement = document.createElement('video');
 
 			if(!file) {
 				alert("Dosya seçilemedi. Lütfen tekrar deneyin.");
@@ -1356,14 +1407,11 @@ function renderSourceSelectors() {
 			const playButton = document.createElement("button");
 			playButton.type = "button";
 			playButton.className = "btn btn-sm btn-secondary play-video-btn settings-btn";
-			// playButton.textContent = emojiMap.play;
 			playButton.innerHTML = `<i class="bi bi-play"></i>`;
 			playButton.addEventListener("click", () => {
 				videoPlaybackInPreviewMode = true;
 				const playerContainer = document.getElementById('vp');
-				// playerContainer.dataset.videoId = video.id;
 				const videoUrl = video.src;
-				// console.log("Playing video URL:", videoUrl);
 				// 1. Show player
 				playerContainer.style.display = 'block';
 				vp.src({ src: videoUrl, type: 'video/mp4'});
@@ -1425,10 +1473,6 @@ function renderSourceSelectors() {
 				message = "Bu video zaten yükleme aşamasında.";
 				showNotificationModalDialog("Dikkat", message, "Tamam");
 				input.value = "";
-				// Clean up any possible stuck state
-				// activeUploadsSet.delete(file.name);
-				// activeUploadsGlobal.delete(video.id);
-				// Reenable input and label since we're not proceeding with the upload
 				videoLabel.style.pointerEvents = "";
 				videoLabel.style.opacity = "";
 				videoLabel.style.cursor = "";
@@ -1471,11 +1515,6 @@ function renderSourceSelectors() {
 				videoLabel.style.opacity = "";
 				videoLabel.style.cursor = "";
 
-				// Also re-enable poster upload input and fade it out
-				// posterUploadInput.disabled = false;
-				// posterLabel.style.pointerEvents = "";
-				// posterLabel.style.opacity = "";
-				// posterLabel.style.cursor = "";
 				videoIndicator.style.backgroundImage = "";
 				clearRowBtn.textContent = "Sil";
 				return;
@@ -1537,7 +1576,6 @@ function renderSourceSelectors() {
 				}
 			}
 				
-			// const isFilePresentInOPFS = await currentProfile.opfsProfileDirectoryHandle.getFileHandle(file.name).then(() => true).catch(() => false);
 			if (checkedFile && checkedFile.size === file.size && checkedFile.name === file.name) {
 				videoIndicator.style.backgroundImage = "none";
 				if (sourceSelectorSection.querySelector("#duplicate-file-alert")) {
@@ -1761,7 +1799,6 @@ function renderSourceSelectors() {
 
 		const posterIndicator = document.createElement("span");
 		posterIndicator.className = "present-or-absent";
-		// posterIndicator.textContent = emojiMap.unchecked;
 
 		const posterUploadInput = document.createElement("input");
 		posterUploadInput.type = "file";
@@ -1786,11 +1823,9 @@ function renderSourceSelectors() {
 		posterUploadInput.addEventListener("change", async (e) => {
 			if (video.src === "") {
 				const message = `Bir video eklemeden poster ekleyemezsiniz.`;
-				// showNotificationModal("Dikkat", message, "Tamam");
 				showNotificationModalDialog("Dikkat", message, "Tamam");
 				return;
 			}
-			// working here
 			const input = e.target;
 			const imageFile = input.files ? input.files[0] : null;
 			if (!imageFile) {
@@ -1834,16 +1869,6 @@ function renderSourceSelectors() {
 				return;
 			}
 
-
-			// if (validImageFileType(file)) {
-			// 	video.poster = URL.createObjectURL(file);
-			// 	posterIndicator.textContent = emojiMap.checked;
-			// 	saveState();
-			// 	renderSourceSelectors();
-			// 	renderVideoList();
-			// } else {
-			// 	alert("Lütfen geçerli bir resim dosyası seçin.");
-			// }
 		});
 
 		const clearRowBtn = document.createElement("button");
@@ -1934,14 +1959,10 @@ function renderSourceSelectors() {
 				}
 				URL.revokeObjectURL(video.src);
 			}
-			// if (video.src && video.src.startsWith('blob:')) {
-			// 	URL.revokeObjectURL(video.src);
-			// }
 			if (video.poster && video.poster.startsWith('blob:')) {
 				URL.revokeObjectURL(video.poster);
 			}
 			if (butlerVideosDirectoryHandle && currentProfile.opfsProfileDirectoryHandle && video.storedFileName) {
-			// if (butlerVideosDirectoryHandle && currentProfile.opfsProfileDirectoryHandle) {
 				currentProfile.opfsProfileDirectoryHandle.removeEntry(video.storedFileName).then(() => {
 					storageInfo();
 				}).catch(err => {
@@ -1999,16 +2020,13 @@ function renderSourceSelectors() {
 		playButton.addEventListener("click", () => {
 			videoPlaybackInPreviewMode = true;
 			const playerContainer = document.getElementById('vp');
-			// playerContainer.dataset.videoId = video.id;
 			const videoUrl = video.src;
-			// console.log("Playing video URL:", videoUrl);
 			// 1. Show player
     		playerContainer.style.display = 'block';
 			vp.src({ src: videoUrl, type: 'video/mp4'});
 			openFullscreen(vp);
 			state.currentlyPlayingVideoId = video.id;
 			vp.volume(state.player_settings.playbackSettings.rememberVolumeLevel ? state.currentVolume : 0.8);
-			// saveState();
 			vp.play();
 			settingsPanelContainer.close();
 		});
@@ -2028,7 +2046,6 @@ function renderSourceSelectors() {
 		if (video.src && video.src !== "") {
 			const editTitleBtn = document.createElement("button");
 			const saveTitleBtn = document.createElement("button");
-			// const titleIsEmpty = !video.displayTitle || video.displayTitle.trim() === "";
 			const cancelEditBtn = document.createElement("button");
 			const titleIsDefault = video.displayTitle === (video.storedFileName || `Video ${video.id + 1}`);
 			const returnToDefaultTitle = document.createElement("button");;
@@ -2077,7 +2094,6 @@ function renderSourceSelectors() {
 				const sel = window.getSelection();
 				sel.removeAllRanges();
 				sel.addRange(range);
-				// document.getSelection().collapseToEnd();
 			});
 
 			saveTitleBtn.addEventListener("click", () => {
@@ -2204,14 +2220,8 @@ function updateVideoList() {
 	localStorage.setItem("videos", JSON.stringify(currentProfile.videos));
 }
 
-// window.addEventListener("orientationchange", function() {
-// 	fitThumbnailsInViewport();
-// }, false);
-
-window.addEventListener('resize', () => {
-	if (state.uiSettings.videoListCoversScreen) {
-		fitThumbnailsInViewport2(state.profiles.find(p => p.id === state.currentProfileId).videoCount);
-	} else {
+window.addEventListener("resize", () => {
+	if (!state.uiSettings.videoListCoversScreen) {
 		fitThumbnailsInViewport(state.profiles.find(p => p.id === state.currentProfileId).videoCount);
 	}
 });
@@ -2219,11 +2229,16 @@ window.addEventListener('resize', () => {
 async function renderVideoList() {
 	const currentProfile = state.profiles.find(p => p.id === state.currentProfileId);
 	videoListGrid.innerHTML = "";
-	videoListGrid.className = `video-list-grid count-${currentProfile.videoCount}`;
+
+	if (state.uiSettings.videoListCoversScreen) {
+		videoListGrid.className = `video-list-grid-covers-screen count-${currentProfile.videoCount}`;
+	} else {
+		videoListGrid.className = `video-list-grid count-${currentProfile.videoCount}`;
+	}
 	
 	for (const video of currentProfile.videos) {
 		const videoListItem = document.createElement("div");
-		videoListItem.className = "video-list-item";
+		videoListItem.className = `video-list-item video-${video.id + 1}`;
 		const img = document.createElement("img");
 		img.className = "thumbnail video-poster-img";
 		img.alt = video.alt || video.storedFileName || `Video ${video.id + 1}`;
@@ -2243,6 +2258,7 @@ async function renderVideoList() {
 		videoListItem.appendChild(img);
 
 		if (!DEBUGGING && img.getAttribute("src") !== "") {
+			videoListGrid.style.userSelect = "none";
 			videoListItem.addEventListener("contextmenu", (e) => {
 				console.log("Context menu disabled on video thumbnail.");
 				e.preventDefault();
@@ -2255,18 +2271,12 @@ async function renderVideoList() {
 			});
 		}
 
-		if (!video.src || video.src === "") {
-			videoListItem.style.backgroundColor = "#333";
-		}
-
 		if (video.src && video.src !== "") {
 			const overlay = document.createElement("div");
 			overlay.className = "video-title-overlay";
 			if (video.displayTitle && video.displayTitle !== "") {
-				// overlay.textContent = video.displayTitle.length < 26 ? video.displayTitle : `${video.displayTitle.slice(0, 26)}...`;
 				overlay.textContent = video.displayTitle;
 			} else {
-				// overlay.textContent = `Video ${video.id + 1}`;
 				overlay.textContent = "";
 			}
 		
@@ -2288,9 +2298,7 @@ async function renderVideoList() {
 				return;
 			}
 			const playerContainer = document.getElementById('vp');
-			// playerContainer.dataset.videoId = video.id;
 			const videoUrl = video.src;
-			// console.log("Playing video URL:", videoUrl);
 			// 1. Show player
     		playerContainer.style.display = 'block';
 			vp.src({ src: videoUrl, type: 'video/mp4'});
@@ -2325,7 +2333,6 @@ async function renderVideoList() {
 							imgEl.style.display = '';
 							video.poster = thumbnailUrl;
 							video.posterTitle = thumbnailHandle.name;
-							// console.log(`Set thumbnail for ${video.storedFileName} in profile ${currentProfile.displayName}: `, thumbnailUrl);
 						}).catch(err => {
 							console.error("Error loading thumbnail from OPFS: ", err);
 							imgEl.src = "./img/placeholder.svg";
@@ -2349,9 +2356,7 @@ async function renderVideoList() {
 		}
 	}
 
-	if (state.uiSettings.videoListCoversScreen) {
-		fitThumbnailsInViewport2(currentProfile.videos.length);
-	} else {
+	if (!state.uiSettings.videoListCoversScreen) {
 		fitThumbnailsInViewport(currentProfile.videos.length);
 	}
 }
@@ -2458,6 +2463,11 @@ function fitThumbnailsInViewport2(videoCount) {
 	const vw = window.innerWidth;
 	const vh = window.innerHeight;
 
+	if (pwaMode()) {
+		// In PWA mode, we can use the entire screen real estate without browser UI, so use actual viewport dimensions.
+		
+	}
+
 	const isPortrait = vh > vw;
 
 	let padding = 2; // 4px padding on each side
@@ -2482,6 +2492,7 @@ function fitThumbnailsInViewport2(videoCount) {
 				height = (vh / 2) - padding * 2;
 				videoListGrid.style.columnGap = `0px`;
 				videoListGrid.style.rowGap = `${padding}px`;
+				videoListGrid.style.rowGap = "0px";
 			} else {
 				cols = 2;
 				rows = 1;
@@ -2507,6 +2518,7 @@ function fitThumbnailsInViewport2(videoCount) {
 				height = (vh / 2) - padding * 2;
 				videoListGrid.style.columnGap = `${padding}px`;
 				videoListGrid.style.rowGap = `${padding- 2}px`;
+				videoListGrid.style.rowGap = "0px";
 			}
 			break;
 		default:
@@ -2544,37 +2556,10 @@ async function clearDirectoryContents(dirHandle) {
     }
 }
 
-// console.log(isMobileDevice());
-
-
-// pb.addEventListener("click", () => {
-// 	vp.src({ src: "../videos/ed_1024_512kb.mp4" });
-// 	launchIntoFullscreen(vp.el());
-// 	vp.play();
-// })
-
-// // Find the right method, call on correct element
-// function launchIntoFullscreen(element) {
-//   if(element.requestFullscreen) {
-//     element.requestFullscreen({navigationUI: 'hide'});
-//   } else if(element.mozRequestFullScreen) {
-//     element.mozRequestFullScreen({navigationUI: 'hide'});
-//   } else if(element.webkitRequestFullscreen) {
-//     element.webkitRequestFullscreen({navigationUI: 'hide'});
-//   } else if(element.msRequestFullscreen) {
-//     element.msRequestFullscreen({navigationUI: 'hide'});
-//   }
-// }
-
 function initSettingsPanelInputs() {
 	settingsCheckBoxes.forEach(checkbox => {
 		const datasetKey = checkbox.dataset.key;
 		switch(datasetKey) {
-			case "videoListCoversScreen":
-				state.uiSettings.videoListCoversScreen
-					? checkbox.checked = true
-					: checkbox.checked = false; 
-				break;
 			case "showVideoControls":
 				state.player_settings.showVideoControls 
 					? checkbox.checked = true
@@ -2592,6 +2577,16 @@ function initSettingsPanelInputs() {
 				break;
 			case "showVideoTitles":
 				state.uiSettings.showOverlays
+					? checkbox.checked = true
+					: checkbox.checked = false; 
+				break;
+			case "videoListCoversScreen":
+				state.uiSettings.videoListCoversScreen
+					? checkbox.checked = true
+					: checkbox.checked = false; 
+				break;
+			case "userTheme":
+				(localStorage.getItem("userTheme") || getSystemTheme()) === "light"
 					? checkbox.checked = true
 					: checkbox.checked = false; 
 				break;
@@ -2663,61 +2658,15 @@ function initPlayer(touchEnabled) {
 		autoplay: false,
 		preload: 'auto',
 		loadingSpinner: true,
-		// userActions: {
-		// 	hotkeys: true,
-		//  click: false,
-		//  click: myClickHandler,
-		//  doubleClick: myDoubleClickHandler
-		// },
 		playbackRates: [], // ← disables PlaybackRateMenuButton entirely
 		controlBar: {
 			pictureInPictureToggle: false, // ← disables PiP completely
-			remainingTimeDisplay: false, // ← disables just the current time text
-			// VolumePanel: {
-			// 	inline: false
-			// },
-			// children: [
-			// 	'PlayToggle',
-			// 	'ProgressControl',
-			// 	// 'TimeDisplay',
-			// 	// 'CurrentTimeDisplay',
-			// 	// 'TimeDivider',
-			// 	// 'DurationDisplay',
-			// 	// 'RemainingTimeDisplay',
-			// 	'VolumePanel',
-			// 	'FullscreenToggle',
-			// 	// 'PlayToggle',
-			// 	// 'ProgressControl',
-			// 	// 'TimeDisplay',           // ← THIS is the correct component
-			// 	// 'RemainingTimeDisplay',  // optional
-			// 	// 'VolumePanel',
-			// 	// 'FullscreenToggle',
-			// ],
-			// skipButtons: {
-			// 	forward: 5
-			// },
+			remainingTimeDisplay: false, // ← disables just the current 
 		},
-		// userActions: {
-		// 	hotkeys: function(event) {
-		// 		// `this` is the player in this context
-
-		// 		// `x` key = pause
-		// 		if (event.which === 88) {
-		// 			this.pause();
-		// 		}
-		// 		// `y` key = play
-		// 		if (event.which === 89) {
-		// 			this.play();
-		// 		}
-		// 	}
-		// },
 		plugins: {
 			hotkeys: {
 				volumeStep: 0.05,
 				seekStep: 5,
-				// enableModifiersForNumbers: false,
-				// enableFullscreen: false,
-				// enableMute: true,
 			},
 		},
 	});
@@ -2784,9 +2733,6 @@ function applyVideoControlBarState() {
 	time: controlBar.getChild('CurrentTimeDisplay'),
 	timeDivider: controlBar.getChild('TimeDivider'),
 	duration: controlBar.getChild('DurationDisplay'),
-	// remaining: controlBar.getChild('RemainingTimeDisplay'),
-    // rate: controlBar.getChild('PlaybackRateMenuButton'),
-    // pip: controlBar.getChild('PictureInPictureToggle'),
     fullscreen: controlBar.getChild('FullscreenToggle'),
   };
 
@@ -2797,7 +2743,6 @@ function applyVideoControlBarState() {
 			: control.hide();
     }
   }
-//   controls.volume.inline = false;
 }
 
 function applyUiSettings() {
@@ -2857,7 +2802,6 @@ async function openFullscreen(player) {
 
 		vpElement.style.display = 'none';
 		
-		// URL.revokeObjectURL(vp.src());
 		document.removeEventListener('fullscreenchange', onFullscreenChange);
 		if (videoPlaybackInPreviewMode)	{
 			settingsPanelContainer.showModal();
@@ -2898,7 +2842,6 @@ function storageInfo() {
 
 function storageInfoDebug() {
 	navigator.storage.estimate().then(({quota, usage}) => {
-		// console.log(`Quota: ${(quota / 1073741824).toFixed(2)} GiB - Usage: ${(usage / 1073741824).toFixed(2)} GiB`);
 		const usageInMiB = `${(usage / 1048576).toFixed(2)}`;
 		const usageInGiB = `${(usage / 1073741824).toFixed(2)}`;
 		const remainingInGib = `${((quota - usage) / 1073741824).toFixed(2)}`;

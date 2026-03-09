@@ -14,12 +14,14 @@ const OFFLINE_URLS = [
   '/js/videojs.hotkeys.current-0.2.min.js',
   '/img/icon-192.png',
   '/img/icon-512.png',
+  '/img/placeholder.svg',
+  '/img/tube-spinner-x27.svg',
   '/favicon.ico'
 ];
 
 self.addEventListener('install', event => {
     event.waitUntil(
-    caches.open(CACHE_NAME).then(cache => {
+    caches.open(CACHE_NAME).then(async cache => {
         return cache.addAll(OFFLINE_URLS)
         .catch(err => {
             console.warn('Cache addAll failed:', err);
