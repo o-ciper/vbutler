@@ -2,6 +2,7 @@
   --button-bg: rgba(128, 128, 128, 0.2);
   --button-border: rgba(128, 128, 128, 0.15);
   --button-box-shadow: rgba(128, 128, 128, 0.3);
+  --settings-tab-btns-left-margin: 12px;
 }
 
 .selector-for-some-widget {
@@ -83,10 +84,13 @@ main {
 }
 
 @media (display-mode: fullscreen), (display-mode: standalone) {
-  html, body {
-    background-color: var(--bg); /* Background for fullscreen mode */
-	border-radius: 0 !important; /* Remove any border radius in fullscreen */
-  }
+	html, body {
+		background-color: var(--bg); /* Background for fullscreen mode */
+		border-radius: 0 !important; /* Remove any border radius in fullscreen */
+	}
+	#settingsTab .nav-item:first-child {
+		margin-left: var(--settings-tab-btns-left-margin);
+	}
 }
 
 .video-list-grid-covers-screen {
@@ -546,7 +550,6 @@ video {
 	z-index: 999;
 }
 
-
 .info-text {
 	margin: 8px 0px 0px;
 	font-size: 0.8rem;
@@ -944,6 +947,9 @@ select::picker(select) {
 	#other-settings-panel fieldset {
 		padding: 0px 8px 16px;
 	}
+	/* #settingsTab .nav-item:first-child {
+		margin-left: var(--settings-tab-btns-left-margin);
+	} */
 }
 
 /* Medium devices (landscape tablets, 768px and up) */
@@ -952,6 +958,9 @@ select::picker(select) {
 	#other-settings-panel fieldset {
 		padding: 0px 12px 16px;
 	}
+	/* #settingsTab .nav-item:first-child {
+		margin-left: var(--settings-tab-btns-left-margin);
+	} */
 }
 
 
@@ -965,6 +974,9 @@ select::picker(select) {
 	#other-settings-panel fieldset {
 		padding: 0px 16px 16px;
 	}
+	/* #settingsTab .nav-item:first-child {
+		margin-left: var(--settings-tab-btns-left-margin);
+	} */
 }
 
 /* Extra large devices (large laptops and desktops, 1200px and up) */
