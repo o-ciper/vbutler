@@ -1,7 +1,7 @@
 function setViewportHeight() {
   // 1% of the viewport height
   const vh = window.innerHeight * 0.01;
-  document.documentElement.style.setProperty('--dvh', `${vh}px`);
+  document.documentElement.style.setProperty('--svh', `${vh}px`);
 }
 
 /* Notification Modal Utility With Dialog Element */
