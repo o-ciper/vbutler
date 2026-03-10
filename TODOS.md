@@ -30,3 +30,4 @@
 - [ ] Disable soundbar auto hide.
 - [ ] Maybe add subtitle support (uploading a subtitle as well)
 - [x] Dark - Light theme selection
+- [ ] On some phones there is a padding(or margin) on top of the video list in home page, and it causes scrolling. It could be because of ```height: calc(var(--dvh, 1vh) * 100);```. Maybe change it to dvh.

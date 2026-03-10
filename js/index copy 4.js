@@ -1479,13 +1479,13 @@ function renderSourceSelectors() {
 				videoPlaybackInPreviewMode = true;
 				const playerContainer = document.getElementById('vp');
 				const videoUrl = video.src;
-				vp.src({ src: videoUrl, type: 'video/mp4'});
 				// 1. Show player
-				openFullscreen(vp, playerContainer);
+				vp.src({ src: videoUrl, type: 'video/mp4'});
 				state.currentlyPlayingVideoId = video.id;
-				// vp.volume(state.player_settings.playbackSettings.rememberVolumeLevel ? state.currentVolume : 0.8);
+				vp.volume(state.player_settings.playbackSettings.rememberVolumeLevel ? state.currentVolume : 0.8);
 				// saveState();
-				// playerContainer.style.display = 'block';
+				openFullscreen(vp);
+				playerContainer.style.display = 'block';
 				// vp.play();
 				settingsPanelContainer.close();
 			});
@@ -2027,12 +2027,12 @@ function renderSourceSelectors() {
 			videoPlaybackInPreviewMode = true;
 			const playerContainer = document.getElementById('vp');
 			const videoUrl = video.src;
-			vp.src({ src: videoUrl, type: 'video/mp4'});
 			// 1. Show player
-			openFullscreen(vp, playerContainer);
+    		playerContainer.style.display = 'block';
+			vp.src({ src: videoUrl, type: 'video/mp4'});
+			openFullscreen(vp);
 			state.currentlyPlayingVideoId = video.id;
-    		// playerContainer.style.display = 'block';
-			// vp.volume(state.player_settings.playbackSettings.rememberVolumeLevel ? state.currentVolume : 0.8);
+			vp.volume(state.player_settings.playbackSettings.rememberVolumeLevel ? state.currentVolume : 0.8);
 			// vp.play();
 			settingsPanelContainer.close();
 		});
@@ -2305,11 +2305,11 @@ async function renderVideoList() {
 			}
 			const playerContainer = document.getElementById('vp');
 			const videoUrl = video.src;
-			vp.src({ src: videoUrl, type: 'video/mp4'});
 			// 1. Show player
 			openFullscreen(vp, playerContainer);
+			vp.src({ src: videoUrl, type: 'video/mp4'});
 			state.currentlyPlayingVideoId = video.id;
-			// vp.volume(state.player_settings.playbackSettings.rememberVolumeLevel ? state.currentVolume : 0.8);
+			vp.volume(state.player_settings.playbackSettings.rememberVolumeLevel ? state.currentVolume : 0.8);
 			saveState();
 		});
 		videoListGrid.appendChild(videoListItem);
@@ -2357,6 +2357,31 @@ async function renderVideoList() {
 			// empty slot — hide image element entirely
 			imgEl.src = '';
 			imgEl.style.display = 'none';
+		}
+	}
+
+	// function onFullscreenChange() {
+	// 	console.log("Fullscreen change detected. Fullscreen element: ", document.fullscreenElement);
+	// 	if (!document.fullscreenElement) {
+	// 		cleanup();
+	// 	}
+	// }
+
+	if (!document.fullscreenElement) {
+		vp.pause();
+		state.currentVolume = vp.volume();
+		if (state.currentlyPlayingVideoId !== null) {
+			currentProfile.videos[state.currentlyPlayingVideoId].currentTime = state.player_settings.playbackSettings.rememberVideoTime ? vp.currentTime() : 0;
+		}
+		state.currentlyPlayingVideoId = null;
+		saveState();
+
+		document.getElementById('vp').style.display = 'none';
+		
+		// document.removeEventListener('fullscreenchange', onFullscreenChange);
+		if (videoPlaybackInPreviewMode)	{
+			settingsPanelContainer.showModal();
+			videoPlaybackInPreviewMode = false;
 		}
 	}
 
@@ -2735,8 +2760,8 @@ function initPlayer(touchEnabled) {
 		switch(datasetKey) {
 			case "showVideoControls":
 				enabled ? vp.controlBar.show() : vp.controlBar.hide();
-				// console.log(vp.controlBar);
-				// console.log("showVideoControls: ",  state.player_settings.showVideoControls);
+				console.log(vp.controlBar);
+				console.log("showVideoControls: ",  state.player_settings.showVideoControls);
 				break;	
 			case "time":
 				controls.time ? (enabled ? controls.time.show() : controls.time.hide()) : null;
@@ -2817,70 +2842,58 @@ function applyUiSettings() {
 /* View in fullscreen */
 async function openFullscreen(player, playerContainer) {
 	const currentProfile = state.profiles.find(p => p.id === state.currentProfileId);
+	// When video exits before ending, hide the player again but don't reset time
+	const cleanup = () => {
+		// const vpElement = document.getElementById('vp');
+		console.log("cleanup called. Current video time: ", vp.currentTime());
+		vp.pause();
+		state.currentVolume = vp.volume();
+		if (state.currentlyPlayingVideoId !== null) {
+			currentProfile.videos[state.currentlyPlayingVideoId].currentTime = state.player_settings.playbackSettings.rememberVideoTime ? vp.currentTime() : 0;
+		}
+		state.currentlyPlayingVideoId = null;
+		saveState();
+
+		playerContainer.style.display = 'none';
+		
+		document.removeEventListener('fullscreenchange', onFullscreenChange);
+		if (videoPlaybackInPreviewMode)	{
+			settingsPanelContainer.showModal();
+			videoPlaybackInPreviewMode = false;
+		}
+	};
 	try {
 		if (player.requestFullscreen) {
-			await player.requestFullscreen({navigationUI: 'hide'}).then(() => {
-				if (document.fullscreenElement) {	
-					player.currentTime(
-					currentProfile.videos[state.currentlyPlayingVideoId].currentTime || 
-					0);
-					player.volume(state.player_settings.playbackSettings.rememberVolumeLevel ? state.currentVolume : 0.8);
-					playerContainer.style.display = 'block';
-					player.play();
-				} else {
-					console.error("Fullscreen request was successful but document.fullscreenElement is not set.");
-					showNotificationModalDialog("Dikkat", "Tam ekran moduna geçildi ancak beklenmedik bir hata oluştu. Lütfen tekrar deneyin.", "Tamam");
+			await player.requestFullscreen({navigationUI: 'hide'})
+				.then(async () => {
+					if (!document.fullscreenElement) {
+						console.warn("Video playback started but fullscreen not active. Forcing cleanup.");
+						cleanup();
+					} else {
+						player.play();
+					}
+				})
+				.catch(err => {
+					console.error("Error starting video playback: ", err);
 					cleanup();
-				}
-			}).catch(err => {
-				console.error("Error attempting to enable fullscreen mode: ", err);
-				showNotificationModalDialog("Dikkat", "Tam ekran modunu etkinleştirirken bir hata oluştu. Lütfen tekrar deneyin.", "Tamam");
-			});
+					renderVideoList();
+				});
 		} else if (player.webkitRequestFullscreen) { /* Safari */
-			await player.webkitRequestFullscreen({navigationUI: 'hide'}).then(() => {
-				if (document.fullscreenElement) {	
-					player.currentTime(
-					currentProfile.videos[state.currentlyPlayingVideoId].currentTime || 
-					0);
-					player.volume(state.player_settings.playbackSettings.rememberVolumeLevel ? state.currentVolume : 0.8);
-					playerContainer.style.display = 'block';
-					player.play();
-				} else {
-					console.error("Fullscreen request was successful but document.fullscreenElement is not set.");
-					showNotificationModalDialog("Dikkat", "Tam ekran moduna geçildi ancak beklenmedik bir hata oluştu. Lütfen tekrar deneyin.", "Tamam");
-					cleanup();
-				}
-			}).catch(err => {
-				console.error("Error attempting to enable fullscreen mode: ", err);
-				showNotificationModalDialog("Dikkat", "Tam ekran modunu etkinleştirirken bir hata oluştu. Lütfen tekrar deneyin.", "Tamam");
-			});
+			await player.webkitRequestFullscreen({navigationUI: 'hide'});
 		} else if (player.msRequestFullscreen) { /* IE11 */
-			await player.msRequestFullscreen({navigationUI: 'hide'}).then(() => {
-				if (document.fullscreenElement) {	
-					player.currentTime(
-					currentProfile.videos[state.currentlyPlayingVideoId].currentTime || 
-					0);
-					player.volume(state.player_settings.playbackSettings.rememberVolumeLevel ? state.currentVolume : 0.8);
-					playerContainer.style.display = 'block';
-					player.play();
-				} else {
-					console.error("Fullscreen request was successful but document.fullscreenElement is not set.");
-					showNotificationModalDialog("Dikkat", "Tam ekran moduna geçildi ancak beklenmedik bir hata oluştu. Lütfen tekrar deneyin.", "Tamam");
-					cleanup();
-				}
-			}).catch(err => {
-				console.error("Error attempting to enable fullscreen mode: ", err);
-				showNotificationModalDialog("Dikkat", "Tam ekran modunu etkinleştirirken bir hata oluştu. Lütfen tekrar deneyin.", "Tamam");
-			});
-		} else {
-			console.error("Fullscreen API is not supported by this browser.");
-			showNotificationModalDialog("Dikkat", "Tarayıcınız tam ekran modunu desteklemiyor.", "Tamam");
-			playerContainer.style.display = 'block';
-			player.play();
+			await player.msRequestFullscreen({navigationUI: 'hide'});
 		}
+		player.currentTime(
+			currentProfile.videos[state.currentlyPlayingVideoId].currentTime || 
+			0);
+		player.volume(state.currentVolume);
+
+		playerContainer.style.display = 'block';
+		
 	} catch (err) {
-		console.error("Error attempting to enabl fullscreen mode: ", err);
-		showNotificationModalDialog("Dikkat", "Tam ekran modunu etkinleştirirken bir hata oluştu. Lütfen tekrar deneyin.", "Tamam");
+		cleanup();
+		renderVideoList();
+		console.error("Error attempting to enable fullscreen mode or playback:", err);
 	}
 
 	const cleanupVideoPlayback = () => {
@@ -2903,29 +2916,10 @@ async function openFullscreen(player, playerContainer) {
 		}
 	};
 
-	// When video exits before ending, hide the player again but don't reset time
-	const cleanup = () => {
-		// const vpElement = document.getElementById('vp');
-		vp.pause();
-		state.currentVolume = vp.volume();
-		if (state.currentlyPlayingVideoId !== null) {
-			currentProfile.videos[state.currentlyPlayingVideoId].currentTime = state.player_settings.playbackSettings.rememberVideoTime ? vp.currentTime() : 0;
-		}
-		state.currentlyPlayingVideoId = null;
-		playerContainer.dataset.videoId = "";
-		saveState();
-
-		playerContainer.style.display = 'none';
-		
-		document.removeEventListener('fullscreenchange', onFullscreenChange);
-		if (videoPlaybackInPreviewMode)	{
-			settingsPanelContainer.showModal();
-			videoPlaybackInPreviewMode = false;
-		}
-	};
-
-	function onFullscreenChange() {
+	async function onFullscreenChange() {
+		console.log("Fullscreen change detected. Fullscreen element: ", document.fullscreenElement);
 		if (!document.fullscreenElement) {
+			console.log("Exiting fullscreen, running cleanup.");
 			cleanup();
 		}
 	}
