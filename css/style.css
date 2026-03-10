@@ -3,7 +3,7 @@
   --button-border: rgba(128, 128, 128, 0.15);
   --button-box-shadow: rgba(128, 128, 128, 0.3);
   --settings-tab-btns-left-margin: 12px;
-  --dvh: 1dvh;
+  --dvh: 1svh;
 }
 
 .selector-for-some-widget {
