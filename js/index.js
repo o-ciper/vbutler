@@ -846,45 +846,44 @@ document.addEventListener("DOMContentLoaded", async () => {
 		const key = checkbox.dataset.key;
 		checkbox.addEventListener("change", (e) => {
 			if (key) {
-				switch(key) {
-					case "videoListCoversScreen":
-						state.uiSettings.videoListCoversScreen = e.target.checked;
-						renderVideoList();
-						break;
-					case "showVideoControls":
-						e.target.checked ? vp.controlBar.show() : vp.controlBar.hide();
-						state.player_settings.showVideoControls = e.target.checked;
-						console.log(vp.controlBar);
-						console.log("showVideoControls: ",  state.player_settings.showVideoControls);
-						break;	
-					case "rememberVolumeLevel":
-						state.player_settings.playbackSettings.rememberVolumeLevel = e.target.checked;
-						break;
-					case "rememberVideoTime":
-						state.player_settings.playbackSettings.rememberVideoTime = e.target.checked;
-						break;
-					case "showVideoTitles":
-						state.uiSettings.showOverlays = e.target.checked;
-						updateOverlayDisplay(e.target.checked);
-						break;
-					case "time":
-						state.player_settings.controlBarChildrenState.time = e.target.checked;
-						controls.time ? (e.target.checked ? controls.time.show() : controls.time.hide()) : null;
-						state.player_settings.controlBarChildrenState.timeDivider = e.target.checked;
-						controls.timeDivider ? (e.target.checked ? controls.timeDivider.show() : controls.timeDivider.hide()) : null;
-						state.player_settings.controlBarChildrenState.duration = e.target.checked;
-						controls.duration ? (e.target.checked ? controls.duration.show() : controls.duration.hide()) : null;
-						break;
-					case "touchControlsEnabled":
-						const enabled = e.target.checked;
-						state.player_settings.playbackSettings.touchControlsEnabled = enabled;
-						initPlayer(enabled);
-						break;
-					default:
-						state.player_settings.controlBarChildrenState[key] = e.target.checked;
-						controls[key] ? (e.target.checked ? controls[key].show() : controls[key].hide()) : null;
-						break;
-				}
+				   switch(key) {
+					   case "videoListCoversScreen":
+						   state.uiSettings.videoListCoversScreen = e.target.checked;
+						   renderVideoList();
+						   break;
+					   case "showVideoControls":
+						   state.player_settings.showVideoControls = e.target.checked;
+						   // Video.js does not support dynamic controls toggle reliably, so re-initialize player
+						   reInitializePlayer(state.player_settings.playbackSettings.touchControlsEnabled);
+						   break;
+					   case "rememberVolumeLevel":
+						   state.player_settings.playbackSettings.rememberVolumeLevel = e.target.checked;
+						   break;
+					   case "rememberVideoTime":
+						   state.player_settings.playbackSettings.rememberVideoTime = e.target.checked;
+						   break;
+					   case "showVideoTitles":
+						   state.uiSettings.showOverlays = e.target.checked;
+						   updateOverlayDisplay(e.target.checked);
+						   break;
+					   case "time":
+						   state.player_settings.controlBarChildrenState.time = e.target.checked;
+						   controls.time ? (e.target.checked ? controls.time.show() : controls.time.hide()) : null;
+						   state.player_settings.controlBarChildrenState.timeDivider = e.target.checked;
+						   controls.timeDivider ? (e.target.checked ? controls.timeDivider.show() : controls.timeDivider.hide()) : null;
+						   state.player_settings.controlBarChildrenState.duration = e.target.checked;
+						   controls.duration ? (e.target.checked ? controls.duration.show() : controls.duration.hide()) : null;
+						   break;
+					   case "touchControlsEnabled":
+						   const enabled = e.target.checked;
+						   state.player_settings.playbackSettings.touchControlsEnabled = enabled;
+						   reInitializePlayer(enabled);
+						   break;
+					   default:
+						   state.player_settings.controlBarChildrenState[key] = e.target.checked;
+						   controls[key] ? (e.target.checked ? controls[key].show() : controls[key].hide()) : null;
+						   break;
+				   }
 				saveState();
 			}
 		});
@@ -2631,7 +2630,8 @@ function updateOverlayDisplay() {
 	});	
 }
 
-function initPlayer(touchEnabled) {
+// Reinitialize player for touch controls change, since video.js doesn't support dynamic enabling/disabling of touch controls in mobile UI plugin.
+function reInitializePlayer(touchEnabled) {
 	if (vp) {
 		vp.dispose();
 	}
@@ -2716,42 +2716,6 @@ function initPlayer(touchEnabled) {
 			return false;
 		}
 	});
-
-	const controlBar = vp.getChild('ControlBar');
-
-	const controls = {
-		play: controlBar.getChild('PlayToggle'),
-		progress: controlBar.getChild('ProgressControl'),
-		volume: controlBar.getChild('VolumePanel'),
-		time: controlBar.getChild('CurrentTimeDisplay'),
-		timeDivider: controlBar.getChild('TimeDivider'),
-		duration: controlBar.getChild('DurationDisplay'),
-		fullscreen: controlBar.getChild('FullscreenToggle'),
-	};
-
-	settingsCheckBoxes.forEach(checkbox => {
-		const enabled = checkbox.checked;
-		const datasetKey = checkbox.dataset.key;
-		switch(datasetKey) {
-			case "showVideoControls":
-				enabled ? vp.controlBar.show() : vp.controlBar.hide();
-				// console.log(vp.controlBar);
-				// console.log("showVideoControls: ",  state.player_settings.showVideoControls);
-				break;	
-			case "time":
-				controls.time ? (enabled ? controls.time.show() : controls.time.hide()) : null;
-				state.player_settings.controlBarChildrenState.timeDivider = enabled;
-				controls.timeDivider ? (enabled ? controls.timeDivider.show() : controls.timeDivider.hide()) : null;
-				state.player_settings.controlBarChildrenState.duration = enabled;
-				controls.duration ? (enabled ? controls.duration.show() : controls.duration.hide()) : null;
-				break;
-			default:
-				controls[datasetKey] ? (enabled ? controls[datasetKey].show() : controls[datasetKey].hide()) : null;
-				break;
-		}
-	});
-
-	applyVideoControlBarState();
 }
 
 function setTouchControls(enabled) {
@@ -2801,9 +2765,32 @@ function applyVideoControlBarState() {
 
   for (const [key, control] of Object.entries(controls)) {
     if (control) {	
-		state.player_settings.controlBarChildrenState[key]
-			? control.show()
-			: control.hide();
+		switch(key) {
+			case "time":
+				state.player_settings.controlBarChildrenState.time ? control.show() : control.hide();
+				if (controls.timeDivider) {
+					state.player_settings.controlBarChildrenState.timeDivider ? controls.timeDivider.show() : controls.timeDivider.hide();
+				}
+				if (controls.duration) {
+					state.player_settings.controlBarChildrenState.duration ? controls.duration.show() : controls.duration.hide();
+				}
+				break;
+			case "play":
+				state.player_settings.showVideoControls ? control.show() : control.hide();
+				break;
+			case "progress":
+				state.player_settings.showVideoControls ? control.show() : control.hide();
+				break;
+			case "volume":
+				state.player_settings.showVideoControls ? control.show() : control.hide();
+				break;
+			case "fullscreen":
+				state.player_settings.showVideoControls ? control.show() : control.hide();
+				break;
+			default:
+				controlBar.getChild(key) ? (state.player_settings.controlBarChildrenState[key] ? control.show() : control.hide()) : null;
+				break;
+		}
     }
   }
 }
