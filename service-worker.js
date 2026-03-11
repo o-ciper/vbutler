@@ -16,6 +16,8 @@ const OFFLINE_URLS = [
   '/img/icon-512.png',
   '/img/placeholder.svg',
   '/img/tube-spinner-x27.svg',
+  '/img/settings-white.svg',
+  '/img/settings-black.svg',
   '/favicon.ico'
 ];
 
