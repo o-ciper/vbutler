@@ -845,45 +845,50 @@ document.addEventListener("DOMContentLoaded", async () => {
 	settingsCheckBoxes.forEach(checkbox => {
 		const key = checkbox.dataset.key;
 		checkbox.addEventListener("change", (e) => {
+			const isChecked = e.target.checked;
 			if (key) {
-				   switch(key) {
-					   case "videoListCoversScreen":
-						   state.uiSettings.videoListCoversScreen = e.target.checked;
-						   renderVideoList();
-						   break;
-					   case "showVideoControls":
-						   state.player_settings.showVideoControls = e.target.checked;
-						   // Video.js does not support dynamic controls toggle reliably, so re-initialize player
-						   reInitializePlayer(state.player_settings.playbackSettings.touchControlsEnabled);
-						   break;
-					   case "rememberVolumeLevel":
-						   state.player_settings.playbackSettings.rememberVolumeLevel = e.target.checked;
-						   break;
-					   case "rememberVideoTime":
-						   state.player_settings.playbackSettings.rememberVideoTime = e.target.checked;
-						   break;
-					   case "showVideoTitles":
-						   state.uiSettings.showOverlays = e.target.checked;
-						   updateOverlayDisplay(e.target.checked);
-						   break;
-					   case "time":
-						   state.player_settings.controlBarChildrenState.time = e.target.checked;
-						   controls.time ? (e.target.checked ? controls.time.show() : controls.time.hide()) : null;
-						   state.player_settings.controlBarChildrenState.timeDivider = e.target.checked;
-						   controls.timeDivider ? (e.target.checked ? controls.timeDivider.show() : controls.timeDivider.hide()) : null;
-						   state.player_settings.controlBarChildrenState.duration = e.target.checked;
-						   controls.duration ? (e.target.checked ? controls.duration.show() : controls.duration.hide()) : null;
-						   break;
-					   case "touchControlsEnabled":
-						   const enabled = e.target.checked;
-						   state.player_settings.playbackSettings.touchControlsEnabled = enabled;
-						   reInitializePlayer(enabled);
-						   break;
-					   default:
-						   state.player_settings.controlBarChildrenState[key] = e.target.checked;
-						   controls[key] ? (e.target.checked ? controls[key].show() : controls[key].hide()) : null;
-						   break;
-				   }
+				switch(key) {
+					case "videoListCoversScreen":
+						state.uiSettings.videoListCoversScreen = isChecked;
+						renderVideoList();
+						break;
+					case "showVideoControls":
+						state.player_settings.showVideoControls = isChecked;
+						// Video.js does not support dynamic controls toggle reliably, so re-initialize player
+						reInitializePlayer();
+						break;
+					case "rememberVolumeLevel":
+						state.player_settings.playbackSettings.rememberVolumeLevel = isChecked;
+						break;
+					case "rememberVideoTime":
+						state.player_settings.playbackSettings.rememberVideoTime = isChecked;
+						break;
+					case "showVideoTitles":
+						state.uiSettings.showOverlays = isChecked;
+						updateOverlayDisplay(isChecked);
+						break;
+					case "time":
+						state.player_settings.controlBarChildrenState.time = isChecked;
+						if (isChecked) {
+							// Time display should only show if both time and duration are enabled, since it doesn't make sense to show current time without total duration.
+							controls.time.show();
+							controls.timeDivider.show();
+							controls.duration.show();
+						} else {
+							controls.time.hide();
+							controls.timeDivider.hide();
+							controls.duration.hide();
+						}
+						break;
+					case "touchControlsEnabled":
+						state.player_settings.playbackSettings.touchControlsEnabled = isChecked;
+						reInitializePlayer();
+						break;
+					default:
+						state.player_settings.controlBarChildrenState[key] = isChecked;
+						controls[key] ? (isChecked ? controls[key].show() : controls[key].hide()) : null;
+						break;
+				}
 				saveState();
 			}
 		});
@@ -2631,7 +2636,7 @@ function updateOverlayDisplay() {
 }
 
 // Reinitialize player for touch controls change, since video.js doesn't support dynamic enabling/disabling of touch controls in mobile UI plugin.
-function reInitializePlayer(touchEnabled) {
+function reInitializePlayer() {
 	if (vp) {
 		vp.dispose();
 	}
@@ -2691,7 +2696,7 @@ function reInitializePlayer(touchEnabled) {
 			seekSeconds: 10,
 			tapTimeout: 300,
 			disableOnEnd: false,
-			disabled: !touchEnabled,
+			disabled: !state.player_settings.playbackSettings.touchControlsEnabled,
 		},
 		forceForTesting: true,
 	});
@@ -2766,29 +2771,31 @@ function applyVideoControlBarState() {
   for (const [key, control] of Object.entries(controls)) {
     if (control) {	
 		switch(key) {
-			case "time":
-				state.player_settings.controlBarChildrenState.time ? control.show() : control.hide();
-				if (controls.timeDivider) {
-					state.player_settings.controlBarChildrenState.timeDivider ? controls.timeDivider.show() : controls.timeDivider.hide();
-				}
-				if (controls.duration) {
-					state.player_settings.controlBarChildrenState.duration ? controls.duration.show() : controls.duration.hide();
-				}
-				break;
 			case "play":
-				state.player_settings.showVideoControls ? control.show() : control.hide();
+				state.player_settings.controlBarChildrenState.play ? control.show() : control.hide();
 				break;
 			case "progress":
-				state.player_settings.showVideoControls ? control.show() : control.hide();
+				state.player_settings.controlBarChildrenState.progress ? control.show() : control.hide();
 				break;
 			case "volume":
-				state.player_settings.showVideoControls ? control.show() : control.hide();
+				state.player_settings.controlBarChildrenState.volume ? control.show() : control.hide();
+				break;
+			case "time":
+				if (state.player_settings.controlBarChildrenState.time) {
+					// Time display should only show if both time and duration are enabled, since it doesn't make sense to show current time without total duration.
+					controls.time.show();
+					controls.timeDivider.show();
+					controls.duration.show();
+				} else {
+					controls.time.hide();
+					controls.timeDivider.hide();
+					controls.duration.hide();
+				}
 				break;
 			case "fullscreen":
-				state.player_settings.showVideoControls ? control.show() : control.hide();
+				state.player_settings.controlBarChildrenState.fullscreen ? control.show() : control.hide();
 				break;
 			default:
-				controlBar.getChild(key) ? (state.player_settings.controlBarChildrenState[key] ? control.show() : control.hide()) : null;
 				break;
 		}
     }
