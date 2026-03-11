@@ -573,6 +573,15 @@ profileNameInput.addEventListener("keydown", (e) => {
 		e.preventDefault();
 		addProfileBtn.click();
 		e.target.value = "";
+		e.target.style.color = "";
+	}
+});
+
+profileNameInput.addEventListener("input", (e) => {
+	if (state.profileNamesSet.has(e.target.value.trim())) {
+		e.target.style.color = "red"
+	} else {
+		e.target.style.color = "limegreen";
 	}
 });
 
