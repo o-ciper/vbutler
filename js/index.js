@@ -145,6 +145,7 @@ function showUpdatePrompt() {
   prompt.style.zIndex = '9999';
   prompt.textContent = 'Yeni bir güncelleme mevcut! Yenilemek için tıklayın.';
   prompt.style.cursor = 'pointer';
+  promt.style.userSelect = 'none';
   prompt.onclick = function() {
     if (navigator.serviceWorker.controller) {
       navigator.serviceWorker.controller.postMessage({ type: 'SKIP_WAITING' });

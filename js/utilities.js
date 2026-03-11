@@ -198,7 +198,7 @@ async function validateVideoBeforeOPFS(file) {
 	// Check size limits if needed
 	const MAX_SIZE = 4096 * 1024 * 1024; // 4GB limit for OPFS
 	if (file.size > MAX_SIZE) {
-	return { supported: false, reason: 'Dosya çok büyük.' };
+	  return { supported: false, reason: 'Dosya çok büyük.' };
 	}
 
 	// Create video element test
