@@ -28,6 +28,10 @@
 - [x] When the user tries to upload a hevc video on a semi-supported platform (sound is present but no video so thumbnail can not be generated - 0px) so video upload fails. In this case the file name remains in hte titleContainer in the source selection row. Fix it. And there is a notification as an alert.
 - [x] Check if removing profiles and files in Firefox works.
 - [ ] Disable soundbar auto hide.
+    - [x] Unfortunately, this seems not possible.
 - [ ] Maybe add subtitle support (uploading a subtitle as well)
 - [x] Dark - Light theme selection
-- [ ] On some phones there is a padding(or margin) on top of the video list in home page, and it causes scrolling. It could be because of ```height: calc(var(--dvh, 1vh) * 100);```. Maybe change it to dvh.
+- [x] On some phones there is a padding(or margin) on top of the video list in home page, and it causes scrolling. It could be because of ```height: calc(var(--dvh, 1vh) * 100);```. Maybe change it to dvh.
+    - [x] Solved. It was because the ```padding-top: env(safe-area-inset-top);``` CSS value set on the body.
+- [ ] When a possible unsupported video message is displayed with a dialog and the user clicks "İptal" instead of "Devam et" the video title and faded out play button remains on the row.
+- [x] Check if anything is wrong with "Yeni güncelleme olabilir" prompt.
