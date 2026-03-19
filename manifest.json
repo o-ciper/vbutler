@@ -58,28 +58,28 @@
     },
     {
      "src": "source/vbutler-mobile-1.jpg",
-      "sizes": "1920x1080",
+      "sizes": "1080x2340",
       "type": "image/jpeg",
       "form_factor": "narrow",
       "label": "Home screen with video list (mobile)"
     },
     {
      "src": "source/vbutler-mobile-2.jpg",
-      "sizes": "1920x1080",
+      "sizes": "1080x2340",
       "type": "image/jpeg",
       "form_factor": "narrow",
       "label": "Profile and video selection screen (mobile)"
     },
     {
      "src": "source/vbutler-mobile-3.jpg",
-      "sizes": "1920x1080",
+      "sizes": "1080x2340",
       "type": "image/jpeg",
       "form_factor": "narrow",
       "label": "Profile settings screen (mobile)"
     },
     {
      "src": "source/vbutler-mobile-4.jpg",
-      "sizes": "1920x1080",
+      "sizes": "1080x2340",
       "type": "image/jpeg",
       "form_factor": "narrow",
       "label": "Other settings screen (mobile)"
