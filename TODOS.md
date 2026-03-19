@@ -11,10 +11,11 @@
 - [x] Show an indicator while a video is uploading to OPFS
 - [x] There is a problem when uploading more than one video simultaneously. For example when a video is large it takes some time to upload it and I try to upload another video. This causes a problem. Look into it. -- Added some code. Seems ok for now.
 - [x] When an error occurs while uploading a video and if the user tries to add the same file agan, "Bu video dosyası zaten mevcut" error is presented to the user although the video doesn't appear on the resource selector list.
-- [ ] The code need alot of refactoring and restructuring, it is a mess.
+- [ ] The code need alot of refactoring and restructuring.
     - [ ] Create a state manager class
     - [ ] Create an OPFS manager class
         - [ ] Maybe instead of creating folders for each profile, create everything under the application folder and store the video file information (metadata) in the state along with informations like which video belongs to which profiles (maybe more than one profile share the same video file), its order in the video list etc.
+    - [ ] Use indexedDB instead of localStorage for video metadata.
 - [ ] Maybe add feature for adding video URL resource (Youtube etc.)
 - [x] Disable poster uploading when there is no video.
 - [x] On video upload page add a button for video play.
@@ -33,5 +34,5 @@
 - [x] Dark - Light theme selection
 - [x] On some phones there is a padding(or margin) on top of the video list in home page, and it causes scrolling. It could be because of ```height: calc(var(--dvh, 1vh) * 100);```. Maybe change it to dvh.
     - [x] Solved. It was because the ```padding-top: env(safe-area-inset-top);``` CSS value set on the body.
-- [ ] When a possible unsupported video message is displayed with a dialog and the user clicks "İptal" instead of "Devam et" the video title and faded out play button remains on the row.
+- [x] When a possible unsupported video message is displayed with a dialog and the user clicks "İptal" instead of "Devam et" the video title and faded out play button remains on the row.
 - [x] Check if anything is wrong with "Yeni güncelleme olabilir" prompt.
