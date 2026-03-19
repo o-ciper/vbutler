@@ -28,19 +28,6 @@
       "type": "image/png"
     }
   ],
-  "protocol_handlers": [
-    {
-      "protocol": "web+vbutler",
-      "url": "web+vbutler://%s"
-    }
-  ],
-  "related_applications": [
-    {
-        "platform": "webapp",
-        "url": "manifest.json",
-        "id": "https://o-ciper.github.io/vbutler/index.html"
-    }
-  ],
   "screenshots": [
     {
      "src": "source/vbutler-wide-1.png",
