@@ -21,10 +21,68 @@
     }
   ],
   "related_applications": [
-        {
-            "platform": "webapp",
-            "url": "manifest.json",
-            "id": "https://localhost:5500"
-        }
-    ]
+    {
+        "platform": "webapp",
+        "url": "manifest.json",
+        "id": "https://o-ciper.github.io/vbutler"
+    }
+  ],
+  "screenshots": [
+    {
+     "src": "source/vbutler-wide-1.png",
+      "sizes": "1920x1080",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Home screen with video list"
+    },
+    {
+     "src": "source/vbutler-wide-2.png",
+      "sizes": "1920x1080",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Profile and video selection screen"
+    },
+    {
+     "src": "source/vbutler-wide-3.png",
+      "sizes": "1920x1080",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Profile settings screen"
+    },
+    {
+     "src": "source/vbutler-wide-4.png",
+      "sizes": "1920x1080",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Other settings screen"
+    },
+    {
+     "src": "source/vbutler-mobile-1.jpg",
+      "sizes": "1920x1080",
+      "type": "image/jpeg",
+      "form_factor": "narrow",
+      "label": "Home screen with video list (mobile)"
+    },
+    {
+     "src": "source/vbutler-mobile-2.jpg",
+      "sizes": "1920x1080",
+      "type": "image/jpeg",
+      "form_factor": "narrow",
+      "label": "Profile and video selection screen (mobile)"
+    },
+    {
+     "src": "source/vbutler-mobile-3.jpg",
+      "sizes": "1920x1080",
+      "type": "image/jpeg",
+      "form_factor": "narrow",
+      "label": "Profile settings screen (mobile)"
+    },
+    {
+     "src": "source/vbutler-mobile-4.jpg",
+      "sizes": "1920x1080",
+      "type": "image/jpeg",
+      "form_factor": "narrow",
+      "label": "Other settings screen (mobile)"
+    }
+  ]
 }
