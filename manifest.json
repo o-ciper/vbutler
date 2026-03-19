@@ -3,6 +3,13 @@
   "short_name": "VButler",
   "description": "A video management app with offline support and installable PWA features.",
   "start_url": "index.html",
+  "display-override": [
+    "window-controls-overlay",
+    "fullscreen",
+    "standalone",
+    "minimal-ui",
+    "browser"
+  ],
   "display": "fullscreen",
   "background_color": "#333",
   "theme_color": "#000",
@@ -24,7 +31,7 @@
     {
         "platform": "webapp",
         "url": "manifest.json",
-        "id": "https://o-ciper.github.io/vbutler"
+        "id": "/vbutler/index.html"
     }
   ],
   "screenshots": [
