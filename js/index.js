@@ -198,6 +198,7 @@ const OPFSDiskUsage = document.getElementById("opfs-disk-usage");
 // const vpElement = document.getElementById("vp");
 
 let vp; // Video.js player instance
+let isLandscapeVideo = false;
 
 const emojiMap = {
 	checked: "✅",
@@ -244,6 +245,9 @@ const state = {
 						originalFileName: "",
 						storedFileName: "",
 						displayTitle: "",
+						width: 0,
+						height: 0,
+						isLandscapeVideo: false,
 						src: "",
 						poster: "",
 						posterTitle: "",
@@ -297,7 +301,10 @@ const state = {
 				rememberVolumeLevel: true,
 				rememberVideoTime: true,
 				touchControlsEnabled: true,
-			}
+			},
+		autoRotate: localStorage.getItem("autoRotate") ?
+			JSON.parse(localStorage.getItem("autoRotate")) :
+			true,
 	},
 	uiSettings: {
 		showOverlays: localStorage.getItem("showOverlays") ?
@@ -429,9 +436,10 @@ function saveState() {
 	localStorage.setItem("profileIdCounter", JSON.stringify(state.profileIdCounter));
 	localStorage.setItem("currentVolume", JSON.stringify(state.currentVolume));
 	localStorage.setItem("THUMBNAIL_GENERATION_TIME", JSON.stringify(state.player_settings.THUMBNAIL_GENERATION_TIME)),
-		localStorage.setItem("showVideoControls", JSON.stringify(state.player_settings.showVideoControls));
+	localStorage.setItem("showVideoControls", JSON.stringify(state.player_settings.showVideoControls));
 	localStorage.setItem("controlBarChildrenState", JSON.stringify(state.player_settings.controlBarChildrenState));
 	localStorage.setItem("playbackSettings", JSON.stringify(state.player_settings.playbackSettings));
+	localStorage.setItem("autoRotate", JSON.stringify(state.player_settings.autoRotate));
 	localStorage.setItem("showOverlays", JSON.stringify(state.uiSettings.showOverlays));
 	localStorage.setItem("videos", JSON.stringify(state.profiles.find(p => p.id === state.currentProfileId).videos));
 	localStorage.setItem("videoListCoversScreen", JSON.stringify(state.uiSettings.videoListCoversScreen));
@@ -796,9 +804,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 			},
 		},
 	});
-	vp.on('loadedmetadata', applyVideoControlBarState);
-	vp.on('componentresize', applyVideoControlBarState);
-	vp.on('loadstart', applyVideoControlBarState);
+
 	vp.mobileUi({
 		fullscreen: {
 			enterOnRotate: true,
@@ -815,6 +821,70 @@ document.addEventListener("DOMContentLoaded", async () => {
 		},
 		forceForTesting: true,
 	});
+
+	vp.on('loadedmetadata', applyVideoControlBarState);
+	vp.on('componentresize', applyVideoControlBarState);
+	vp.on('loadstart', applyVideoControlBarState);
+
+
+
+	// vp.ready(function () {
+	// 	const videoEl = vp.tech().el();
+
+	// 	videoEl.addEventListener('loadedmetadata', () => {
+	// 		isLandscapeVideo =
+	// 		videoEl.videoWidth > videoEl.videoHeight;
+	// 	});
+
+	// 	// vp.on('fullscreenchange', async () => {
+	// 	// 	if (vp.isFullscreen()) {
+	// 	// 	if (isLandscapeVideo) {
+	// 	// 		try {
+	// 	// 		await screen.orientation.lock('landscape');
+	// 	// 		} catch (e) {}
+	// 	// 	}
+	// 	// 	} else {
+	// 	// 	try {
+	// 	// 		screen.orientation.unlock();
+	// 	// 	} catch (e) {}
+	// 	// 	}
+	// 	// });
+	// 	if (isLandscapeVideo) {
+	// 		vp.mobileUi({
+	// 			fullscreen: {
+	// 				enterOnRotate: true,
+	// 				exitOnRotate: false,
+	// 				lockOnRotate: false,
+	// 				lockToLandscapeOnEnter: true,
+	// 				disabled: false,
+	// 			},
+	// 			touchControls: {
+	// 				seekSeconds: 10,
+	// 				tapTimeout: 300,
+	// 				disableOnEnd: false,
+	// 				disabled: !state.player_settings.playbackSettings.touchControlsEnabled,
+	// 			},
+	// 			forceForTesting: true,
+	// 		});
+	// 	} else {
+	// 		vp.mobileUi({
+	// 			fullscreen: {
+	// 				enterOnRotate: true,
+	// 				exitOnRotate: false,
+	// 				lockOnRotate: false,
+	// 				lockToLandscapeOnEnter: false,
+	// 				disabled: false,
+	// 			},
+	// 			touchControls: {
+	// 				seekSeconds: 10,
+	// 				tapTimeout: 300,
+	// 				disableOnEnd: false,
+	// 				disabled: !state.player_settings.playbackSettings.touchControlsEnabled,
+	// 			},
+	// 			forceForTesting: true,
+	// 		});
+	// 	}
+	// });
 
 	vp.on("volumechange", () => {
 		state.currentVolume = vp.volume();
@@ -872,6 +942,9 @@ document.addEventListener("DOMContentLoaded", async () => {
 						break;
 					case "rememberVideoTime":
 						state.player_settings.playbackSettings.rememberVideoTime = isChecked;
+						break;
+					case "autoRotate":
+						state.player_settings.autoRotate = isChecked;
 						break;
 					case "showVideoTitles":
 						state.uiSettings.showOverlays = isChecked;
@@ -1493,7 +1566,11 @@ function renderSourceSelectors() {
 				videoPlaybackInPreviewMode = true;
 				const playerContainer = document.getElementById('vp');
 				const videoUrl = video.src;
+				console.log(videoUrl)
+
+				console.log(video)
 				vp.src({ src: videoUrl, type: 'video/mp4' });
+				vp.isLandscapeVideo = video.isLandscapeVideo;
 				// 1. Show player
 				openFullscreen(vp, playerContainer);
 				state.currentlyPlayingVideoId = video.id;
@@ -1784,6 +1861,13 @@ function renderSourceSelectors() {
 			video.src = URL.createObjectURL(videoFile);
 			video.storedFileName = videoFile.name;
 			video.displayTitle = videoFile.name;
+			/////////////
+			
+			video.width = shouldUpload.width;
+			video.height = shouldUpload.height;
+			video.isLandscapeVideo = shouldUpload.width > shouldUpload.height;
+			
+			/////////////
 			video.size = (fileSizeGB < 1) ? `${fileSizeMB.toFixed(2)} MiB` : `${fileSizeGB.toFixed(2)} GiB`;
 			if (thumbnailFile) {
 				video.poster = URL.createObjectURL(thumbnailFile);
@@ -1796,7 +1880,7 @@ function renderSourceSelectors() {
 			if (queuedOPFSOperationsCount < 1) {
 				renderSourceSelectors();
 			}
-			video.originalFileName = "";
+			// video.originalFileName = "";
 			activeUploadsSet.delete(file.name);
 			renderVideoList();
 			saveState();
@@ -2044,6 +2128,7 @@ function renderSourceSelectors() {
 			const playerContainer = document.getElementById('vp');
 			const videoUrl = video.src;
 			vp.src({ src: videoUrl, type: 'video/mp4' });
+			vp.isLandscapeVideo = video.isLandscapeVideo;
 			// 1. Show player
 			openFullscreen(vp, playerContainer);
 			state.currentlyPlayingVideoId = video.id;
@@ -2321,7 +2406,9 @@ async function renderVideoList() {
 			}
 			const playerContainer = document.getElementById('vp');
 			const videoUrl = video.src;
+			
 			vp.src({ src: videoUrl, type: 'video/mp4' });
+			vp.isLandscapeVideo = video.isLandscapeVideo;
 			// 1. Show player
 			openFullscreen(vp, playerContainer);
 			state.currentlyPlayingVideoId = video.id;
@@ -2595,6 +2682,11 @@ function initSettingsPanelInputs() {
 					? checkbox.checked = true
 					: checkbox.checked = false;
 				break;
+			case "autoRotate":
+				state.player_settings.autoRotate
+					? checkbox.checked = true
+					: checkbox.checked = false;
+				break;
 			case "showVideoTitles":
 				state.uiSettings.showOverlays
 					? checkbox.checked = true
@@ -2692,10 +2784,6 @@ function reInitializePlayer() {
 		},
 	});
 
-	vp.on('loadedmetadata', applyVideoControlBarState);
-	vp.on('componentresize', applyVideoControlBarState);
-	vp.on('loadstart', applyVideoControlBarState);
-
 	vp.mobileUi({
 		fullscreen: {
 			enterOnRotate: true,
@@ -2712,6 +2800,11 @@ function reInitializePlayer() {
 		},
 		forceForTesting: true,
 	});
+
+	vp.on('loadedmetadata', applyVideoControlBarState);
+	vp.on('componentresize', applyVideoControlBarState);
+	vp.on('loadstart', applyVideoControlBarState);
+
 	vp.on("volumechange", () => {
 		state.currentVolume = vp.volume();
 		localStorage.setItem("currentVolume", state.currentVolume);
@@ -2822,6 +2915,7 @@ function applyUiSettings() {
 
 /* View in fullscreen */
 async function openFullscreen(player, playerContainer) {
+	console.log(vp.isLandscapeVideo)
 	const currentProfile = state.profiles.find(p => p.id === state.currentProfileId);
 	try {
 		if (player.requestFullscreen) {
@@ -2885,7 +2979,7 @@ async function openFullscreen(player, playerContainer) {
 			player.play();
 		}
 	} catch (err) {
-		console.error("Error attempting to enabl fullscreen mode: ", err);
+		console.error("Error attempting to enable fullscreen mode: ", err);
 		showNotificationModalDialog("Dikkat", "Tam ekran modunu etkinleştirirken bir hata oluştu. Lütfen tekrar deneyin.", "Tamam");
 	}
 
@@ -2907,6 +3001,7 @@ async function openFullscreen(player, playerContainer) {
 			settingsPanelContainer.showModal();
 			videoPlaybackInPreviewMode = false;
 		}
+		screen.orientation.unlock();
 	};
 
 	// When video exits before ending, hide the player again but don't reset time
@@ -2928,11 +3023,30 @@ async function openFullscreen(player, playerContainer) {
 			settingsPanelContainer.showModal();
 			videoPlaybackInPreviewMode = false;
 		}
+		screen.orientation.unlock();
 	};
 
 	function onFullscreenChange() {
 		if (!document.fullscreenElement) {
 			cleanup();
+		} else {
+			if (state.player_settings.autoRotate) {
+				if (vp.isLandscapeVideo) {
+					console.log("Locking screen orientation to landscape for video playback.");
+					screen.orientation.lock('landscape').catch(err => {
+						console.warn("Screen orientation lock failed: ", err);
+					});
+				} else {
+					console.log("Locking screen orientation to portrait for video playback.");
+
+					screen.orientation.lock('portrait').catch(err => {
+						console.warn("Screen orientation lock failed: ", err);
+					});
+				}
+				// screen.orientation.lock(video.isLandscapeVideo ? 'landscape' : 'portrait').catch(err => {
+				// 	console.warn("Screen orientation lock failed: ", err);
+				// });
+			}
 		}
 	}
 

@@ -404,6 +404,10 @@ video {
 	/* background-color: var(--panel-inactive-tab); */
 }
 
+#other-settings-panel .form-switch {
+	margin-right: 10px;
+}
+
 /* .nav-link {
 	text-decoration: none;
 	color: red;
