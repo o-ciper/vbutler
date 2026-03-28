@@ -1,4 +1,4 @@
-const CACHE_NAME = 'vbutler-cache-v1';
+const CACHE_NAME = 'vbutler-cache-v1.1';
 const OFFLINE_URLS = [
   '/',
   '/index.html',
