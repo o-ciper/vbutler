@@ -754,6 +754,48 @@ video {
 	margin-right: 4px;
 }
 
+#sleep-timer-container {
+	position: absolute;
+	top: 12px;
+	right: 12px;
+	display: flex;
+	align-items: center;
+	gap: 5px;
+	background-color: rgb(43 51 63 / .7);
+	color: white;
+	padding: 5px 10px;
+	border-radius: 16px;
+	font-family: 'monospace';
+	font-size: 0.9rem;
+	z-index: 1000;
+	cursor: pointer;
+	transition: opacity 0.25s ease-in-out, visibility 0.25s ease-in-out;
+}
+
+#sleep-timer-set-countdown-container {
+	font-size: 1.2rem;
+}
+
+/* Style for your sleep timer component */
+.vjs-sleep-timer-display {
+  transition: opacity 0.25s ease-in-out, visibility 0.25s ease-in-out;
+}
+
+/* Hide when user is inactive */
+.vjs-user-inactive .vjs-sleep-timer-display {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+/* Show when user is active or component is hovered */
+.vjs-user-active .vjs-sleep-timer-display,
+.vjs-sleep-timer-display:hover {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+
 select::picker(select) {
 	border-bottom-left-radius: 8px;
 	border-bottom-right-radius: 8px;
@@ -782,13 +824,15 @@ select::picker(select) {
 
 /* Confirm and Notification Modal With Dialog Element Styles */
 .confirm-modal-overlay-dialog::backdrop,
-.notification-modal-overlay-dialog::backdrop {
+.notification-modal-overlay-dialog::backdrop,
+.set-timer-modal-overlay-dialog::backdrop {
 	/* background: rgba(49, 49, 50, 0.706); */
 	background: rgba(0, 0, 0, 0.7);
 }
 
 .confirm-modal-overlay-dialog,
-.notification-modal-overlay-dialog {
+.notification-modal-overlay-dialog,
+.set-timer-modal-overlay-dialog {
 	background: rgba(0, 0, 0, 0.7);
 	/* display: flex; */
 	justify-content: center;
@@ -802,7 +846,8 @@ select::picker(select) {
 }
 
 .confirm-modal-card-dialog,
-.notification-modal-card-dialog {
+.notification-modal-card-dialog,
+.set-timer-modal-card-dialog {
 	background: #1e1e1e;
 	border: 1px solid #444;
 	border-radius: 0.5rem;
@@ -817,21 +862,28 @@ select::picker(select) {
 }
 
 .confirm-modal-header-dialog,
-.notification-modal-header-dialog {
+.notification-modal-header-dialog,
+.set-timer-modal-header-dialog {
 	padding: 1rem;
 	border-bottom: 1px solid #444;
 	flex-shrink: 0;
 }
 
+.set-timer-modal-header-dialog {
+	border-bottom: .5px solid #302f2f;
+}
+
 .confirm-modal-header-dialog h3,
-.notification-modal-header-dialog h3 {
+.notification-modal-header-dialog h3,
+.set-timer-modal-header-dialog h3 {
 	margin: 0;
-	font-size: 1.25rem;
+	font-size: 1.2rem;
 	color: #fff;
 }
 
 .confirm-modal-body-dialog,
-.notification-modal-body-dialog {
+.notification-modal-body-dialog,
+.set-timer-modal-body-dialog {
 	padding: 1.5rem;
 	color: #ddd;
 	line-height: 1.6;
@@ -840,15 +892,43 @@ select::picker(select) {
 	min-height: 0;
 }
 
+.set-timer-modal-body-dialog {
+	padding: 0.2rem 0.6rem;
+}
+
+.set-timer-modal-body-dialog .form-check {
+	margin-bottom: 4px;
+	/* display: flex;
+	align-items: center;
+	gap: 8px; */
+	font-size: 1.2rem;
+	/* justify-content: center; */
+	border: 1px solid #302f2f;
+	border-radius: 8px;
+}
+
+.set-timer-modal-body-dialog .form-check .form-check-input {
+	margin-top: 14px;
+	margin-left: -1em;
+}
+
+.set-timer-modal-body-dialog .form-check label {
+	font-size: 1rem;
+	width: 100%;
+	padding: 10px;
+}
+
 .confirm-modal-body-dialog .confirm-modal-message-dialog li,
-.notification-modal-body-dialog .notification-modal-message-dialog li {
+.notification-modal-body-dialog .notification-modal-message-dialog li,
+.set-timer-modal-body-dialog .set-timer-modal-message-dialog li {
 	word-wrap: break-word;
 	/* word-break: break-all; */
 	margin: 0;
 }
 
 .confirm-modal-footer-dialog,
-.notification-modal-footer-dialog {
+.notification-modal-footer-dialog,
+.set-timer-modal-footer-dialog {
 	padding: 1rem;
 	border-top: 1px solid #444;
 	display: flex;
@@ -857,8 +937,13 @@ select::picker(select) {
 	flex-shrink: 0;
 }
 
+.set-timer-modal-footer-dialog {
+	border-top: .5px solid #302f2f;
+}
+
 .confirm-modal-footer-dialog .btn,
-.notification-modal-footer-dialog .btn {
+.notification-modal-footer-dialog .btn,
+.set-timer-modal-footer-dialog .btn {
 	min-width: 80px;
 	padding: 0.4rem 0.8rem;
 	font-size: 0.95rem;
@@ -904,33 +989,43 @@ select::picker(select) {
 	}
 
 	.confirm-modal-card-dialog,
-	.notification-modal-card-dialog {
-		max-height: calc(100dvh - 1rem);
+	.notification-modal-card-dialog,
+	.set-timer-modal-card-dialog {
+		max-height: calc(100dvh - 2.5rem);
+	}
+
+	.set-timer-modal-overlay-dialog {
+		width: min(400px, 95%);
 	}
 	
 	.confirm-modal-header-dialog,
-	.notification-modal-header-dialog {
+	.notification-modal-header-dialog,
+	.set-timer-modal-header-dialog {
 		padding: 0.75rem;
 	}
 	
 	.confirm-modal-header-dialog h3,
-	.notification-modal-header-dialog h3 {
+	.notification-modal-header-dialog h3,
+	.set-timer-modal-header-dialog h3 {
 		font-size: 1rem;
 	}
 	
 	.confirm-modal-body-dialog,
-	.notification-modal-body-dialog {
-		padding: 1rem;
+	.notification-modal-body-dialog,
+	.set-timer-modal-body-dialog {
+		padding: 0.3rem 0.6rem 0.2rem;
 		font-size: 0.95rem;
 	}
 	
 	.confirm-modal-footer-dialog,
-	.notification-modal-footer-dialog {
+	.notification-modal-footer-dialog,
+	.set-timer-modal-footer-dialog {
 		padding: 0.75rem;
 	}
 	
 	.confirm-modal-footer-dialog .btn,
-	.notification-modal-footer-dialog .btn {
+	.notification-modal-footer-dialog .btn,
+	.set-timer-modal-footer-dialog .btn {
 		min-width: 70px;
 		padding: 0.35rem 0.65rem;
 		font-size: 0.85rem;

@@ -28,7 +28,7 @@
     - [x] When there is no video in any of the profiles, deletion of profiles doesn't happen.
 - [x] When the user tries to upload a hevc video on a semi-supported platform (sound is present but no video so thumbnail can not be generated - 0px) so video upload fails. In this case the file name remains in hte titleContainer in the source selection row. Fix it. And there is a notification as an alert.
 - [x] Check if removing profiles and files in Firefox works.
-- [ ] Disable soundbar auto hide.
+- [x] Disable soundbar auto hide.
     - [x] Unfortunately, this seems not possible.
 - [ ] Maybe add subtitle support (uploading a subtitle as well)
 - [x] Dark - Light theme selection
@@ -36,3 +36,8 @@
     - [x] Solved. It was because the ```padding-top: env(safe-area-inset-top);``` CSS value set on the body.
 - [x] When a possible unsupported video message is displayed with a dialog and the user clicks "İptal" instead of "Devam et" the video title and faded out play button remains on the row.
 - [x] Check if anything is wrong with "Yeni güncelleme olabilir" prompt.
+- [x] Add a sleep timer option. Button (timer display and setting timer) as a videojs component.
+    -[x] User should be able to hide the timer button from settings.
+- [x] Add an option for autorotating video with respect to apsect ratio.
+- [ ] Add an option to enable autoplay next video, if there is one in the profile.
+    - [ ] Should the autoplay recircle if there is no other video after the currently playing video but there is one before in the current profile's video list.

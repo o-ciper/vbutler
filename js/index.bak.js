@@ -181,10 +181,6 @@ const videoCountValues = [1, 2, 4];
 const settingsCheckBoxes = document.querySelectorAll("#settings-panel-container input[type='checkbox']");
 const removeAllFilesBtn = document.querySelector(".delete-all-btn");
 const storageSettingsSection = document.getElementById("storage-settings-section");
-const countDownContainer = document.getElementById("sleep-timer-container");
-const sleepTimerCountDownHours = document.getElementById("sleep-timer-countdown-hours");
-const sleepTimerCountDownMinutes = document.getElementById("sleep-timer-countdown-minutes");
-const sleepTimerCountDownSeconds = document.getElementById("sleep-timer-countdown-seconds");
 
 let DEBUGGING = false;
 
@@ -201,121 +197,7 @@ const OPFSDiskUsage = document.getElementById("opfs-disk-usage");
 
 // const vpElement = document.getElementById("vp");
 
-// Custom videojs component for sleep timer countdown display
-let sleepTimerTimeoutId = null;
-let sleepTimerIntervalId = null;
-const CountdownDisplay = videojs.getComponent('Component');
-
-class SleepTimerDisplay extends CountdownDisplay {
-  constructor(player, options) {
-    super(player, options);
-    
-    this.container = document.createElement('div');
-    this.container.id = 'sleep-timer-container';
-
-	this.setCountDownContainer = document.createElement('div');
-	this.setCountDownContainer.id = 'sleep-timer-set-countdown-container';
-	this.setCountDownContainer.innerHTML = '<i class="bi bi-stopwatch"></i>';
-
-	this.timerContainer = document.createElement('div');
-	this.timerContainer.id = "sleep-timer-countdown-container";
-    
-    this.hoursSpan = document.createElement('span');
-    this.hoursSpan.id = 'sleep-timer-countdown-hours';
-    this.minutesSpan = document.createElement('span');
-    this.minutesSpan.id = 'sleep-timer-countdown-minutes';
-    this.secondsSpan = document.createElement('span');
-    this.secondsSpan.id = 'sleep-timer-countdown-seconds';
-    
-    this.timerContainer.appendChild(this.hoursSpan);
-    this.timerContainer.appendChild(this.minutesSpan);
-    this.timerContainer.appendChild(this.secondsSpan);
-
-	this.container.appendChild(this.setCountDownContainer);
-	this.container.appendChild(this.timerContainer);
-	// Add CSS class for auto-hide
-    this.container.classList.add('vjs-sleep-timer-display');
-    
-    this.el().appendChild(this.container);
-
-	this.container.addEventListener("click", async () => {
-		try {
-			const minutes = await showSetTimerModalDialog2(
-							"Uyku Zamanlayıcısı",
-							"",
-							"Ayarla");
-			if (minutes !== null) {
-				if (isNaN(minutes) || minutes < 0) {
-					alert("Lütfen geçerli bir süre girin (0 veya pozitif bir sayı).");
-					return;
-				}
-				state.player_settings.sleepTimerDuration = minutes;
-				saveState();
-				this.countdownIsActive = !isNaN(minutes) && minutes > 0;
-			}
-		} catch(err) {
-			console.error("Error setting sleep timer: ", err);
-		}
-	});
-  }
-
-  countdownIsActive = false;
-  target = 0;
-  ref = 0;
-  timeoutId = null;
-  intervalId = null;
-
-  countDown() {
-	const start = performance.now();
-	const duration = this.target; // assuming target is in seconds
-
-	const tick = (now) => {
-		const elapsed = now - start;
-		const remaining = Math.max(0, duration - elapsed);
-		const totalSeconds = Math.ceil(remaining / 1000);
-		const hours = Math.floor(totalSeconds / 3600);
-		const minutes = Math.floor((totalSeconds % 3600) / 60);
-		const seconds = totalSeconds % 60;
-		this.updateDisplay(hours, minutes, seconds);
-		if (remaining > 0 && this.countdownIsActive) {
-      		this.ref = requestAnimationFrame(tick);
-		} else {
-			// Timer finished
-			cancelAnimationFrame(this.ref);
-			this.countdownIsActive = false;
-			this.updateDisplay("", "", "");
-			// ... handle timer end (pause video, etc.)
-			vp.pause();
-			return;
-		}
-	};
-	// Cancel any previous countdown
-	if (this.ref) {
-		cancelAnimationFrame(this.ref);
-		this.ref = null;
-	}
-	this.countdownIsActive = true;
-	this.ref = requestAnimationFrame(tick);
-  }
-  
-  updateDisplay(hours, minutes, seconds) {
-	if (this.countdownIsActive) {
-		hours && (this.hoursSpan.textContent = hours.toString().padStart(2, '0') + ":");
-		minutes && (this.minutesSpan.textContent = minutes.toString().padStart(2, '0') + ":");
-		this.secondsSpan.textContent = seconds.toString().padStart(2, '0');
-  	} else {
-		this.hoursSpan.textContent = "";
-		this.minutesSpan.textContent = "";
-		this.secondsSpan.textContent = "";
-	}
-  }
-}
-
-// Register the component
-videojs.registerComponent('SleepTimerDisplay', SleepTimerDisplay);
-
 let vp; // Video.js player instance
-let isLandscapeVideo = false;
 
 const emojiMap = {
 	checked: "✅",
@@ -362,9 +244,6 @@ const state = {
 						originalFileName: "",
 						storedFileName: "",
 						displayTitle: "",
-						width: 0,
-						height: 0,
-						isLandscapeVideo: false,
 						src: "",
 						poster: "",
 						posterTitle: "",
@@ -412,22 +291,13 @@ const state = {
 				// "pip": false,
 				"fullscreen": true,
 			},
-		showSleepTimer: localStorage.getItem("showSleepTimer") ?
-			JSON.parse(localStorage.getItem("showSleepTimer")) :
-			false,
 		playbackSettings: localStorage.getItem("playbackSettings") ?
 			JSON.parse(localStorage.getItem("playbackSettings")) :
 			{
 				rememberVolumeLevel: true,
 				rememberVideoTime: true,
 				touchControlsEnabled: true,
-			},
-		autoRotate: localStorage.getItem("autoRotate") ?
-			JSON.parse(localStorage.getItem("autoRotate")) :
-			true,
-		sleepTimerDuration: localStorage.getItem("sleepTimerDuration") ?
-			JSON.parse(localStorage.getItem("sleepTimerDuration")) :
-			0,
+			}
 	},
 	uiSettings: {
 		showOverlays: localStorage.getItem("showOverlays") ?
@@ -559,11 +429,9 @@ function saveState() {
 	localStorage.setItem("profileIdCounter", JSON.stringify(state.profileIdCounter));
 	localStorage.setItem("currentVolume", JSON.stringify(state.currentVolume));
 	localStorage.setItem("THUMBNAIL_GENERATION_TIME", JSON.stringify(state.player_settings.THUMBNAIL_GENERATION_TIME)),
-	localStorage.setItem("showVideoControls", JSON.stringify(state.player_settings.showVideoControls));
+		localStorage.setItem("showVideoControls", JSON.stringify(state.player_settings.showVideoControls));
 	localStorage.setItem("controlBarChildrenState", JSON.stringify(state.player_settings.controlBarChildrenState));
-	localStorage.setItem("showSleepTimer", JSON.stringify(state.player_settings.showSleepTimer));
 	localStorage.setItem("playbackSettings", JSON.stringify(state.player_settings.playbackSettings));
-	localStorage.setItem("autoRotate", JSON.stringify(state.player_settings.autoRotate));
 	localStorage.setItem("showOverlays", JSON.stringify(state.uiSettings.showOverlays));
 	localStorage.setItem("videos", JSON.stringify(state.profiles.find(p => p.id === state.currentProfileId).videos));
 	localStorage.setItem("videoListCoversScreen", JSON.stringify(state.uiSettings.videoListCoversScreen));
@@ -928,9 +796,9 @@ document.addEventListener("DOMContentLoaded", async () => {
 			},
 		},
 	});
-
-	vp.addChild('SleepTimerDisplay');
-	
+	vp.on('loadedmetadata', applyVideoControlBarState);
+	vp.on('componentresize', applyVideoControlBarState);
+	vp.on('loadstart', applyVideoControlBarState);
 	vp.mobileUi({
 		fullscreen: {
 			enterOnRotate: true,
@@ -947,70 +815,6 @@ document.addEventListener("DOMContentLoaded", async () => {
 		},
 		forceForTesting: true,
 	});
-
-	vp.on('loadedmetadata', applyVideoControlBarState);
-	vp.on('componentresize', applyVideoControlBarState);
-	vp.on('loadstart', applyVideoControlBarState);
-
-
-
-	// vp.ready(function () {
-	// 	const videoEl = vp.tech().el();
-
-	// 	videoEl.addEventListener('loadedmetadata', () => {
-	// 		isLandscapeVideo =
-	// 		videoEl.videoWidth > videoEl.videoHeight;
-	// 	});
-
-	// 	// vp.on('fullscreenchange', async () => {
-	// 	// 	if (vp.isFullscreen()) {
-	// 	// 	if (isLandscapeVideo) {
-	// 	// 		try {
-	// 	// 		await screen.orientation.lock('landscape');
-	// 	// 		} catch (e) {}
-	// 	// 	}
-	// 	// 	} else {
-	// 	// 	try {
-	// 	// 		screen.orientation.unlock();
-	// 	// 	} catch (e) {}
-	// 	// 	}
-	// 	// });
-	// 	if (isLandscapeVideo) {
-	// 		vp.mobileUi({
-	// 			fullscreen: {
-	// 				enterOnRotate: true,
-	// 				exitOnRotate: false,
-	// 				lockOnRotate: false,
-	// 				lockToLandscapeOnEnter: true,
-	// 				disabled: false,
-	// 			},
-	// 			touchControls: {
-	// 				seekSeconds: 10,
-	// 				tapTimeout: 300,
-	// 				disableOnEnd: false,
-	// 				disabled: !state.player_settings.playbackSettings.touchControlsEnabled,
-	// 			},
-	// 			forceForTesting: true,
-	// 		});
-	// 	} else {
-	// 		vp.mobileUi({
-	// 			fullscreen: {
-	// 				enterOnRotate: true,
-	// 				exitOnRotate: false,
-	// 				lockOnRotate: false,
-	// 				lockToLandscapeOnEnter: false,
-	// 				disabled: false,
-	// 			},
-	// 			touchControls: {
-	// 				seekSeconds: 10,
-	// 				tapTimeout: 300,
-	// 				disableOnEnd: false,
-	// 				disabled: !state.player_settings.playbackSettings.touchControlsEnabled,
-	// 			},
-	// 			forceForTesting: true,
-	// 		});
-	// 	}
-	// });
 
 	vp.on("volumechange", () => {
 		state.currentVolume = vp.volume();
@@ -1035,11 +839,6 @@ document.addEventListener("DOMContentLoaded", async () => {
 	});
 
 	const controlBar = vp.getChild('ControlBar');
-	const sleepTimerDisplay = vp.getChild('SleepTimerDisplay');
-
-	if (!state.player_settings.showSleepTimer) {
-		sleepTimerDisplay.hide();
-	}
 
 	const controls = {
 		play: controlBar.getChild('PlayToggle'),
@@ -1059,10 +858,24 @@ document.addEventListener("DOMContentLoaded", async () => {
 			const isChecked = e.target.checked;
 			if (key) {
 				switch (key) {
+					case "videoListCoversScreen":
+						state.uiSettings.videoListCoversScreen = isChecked;
+						renderVideoList();
+						break;
 					case "showVideoControls":
 						state.player_settings.showVideoControls = isChecked;
 						// Video.js does not support dynamic controls toggle reliably, so re-initialize player
 						reInitializePlayer();
+						break;
+					case "rememberVolumeLevel":
+						state.player_settings.playbackSettings.rememberVolumeLevel = isChecked;
+						break;
+					case "rememberVideoTime":
+						state.player_settings.playbackSettings.rememberVideoTime = isChecked;
+						break;
+					case "showVideoTitles":
+						state.uiSettings.showOverlays = isChecked;
+						updateOverlayDisplay(isChecked);
 						break;
 					case "time":
 						state.player_settings.controlBarChildrenState.time = isChecked;
@@ -1077,34 +890,9 @@ document.addEventListener("DOMContentLoaded", async () => {
 							controls.duration.hide();
 						}
 						break;
-					case "sleepTimer":
-						state.player_settings.showSleepTimer = isChecked;
-						if (isChecked) {
-							sleepTimerDisplay.show();
-						} else {
-							sleepTimerDisplay.hide();
-						}
-						break;
-					case "rememberVideoTime":
-						state.player_settings.playbackSettings.rememberVideoTime = isChecked;
-						break;
-					case "rememberVolumeLevel":
-						state.player_settings.playbackSettings.rememberVolumeLevel = isChecked;
-						break;
 					case "touchControlsEnabled":
 						state.player_settings.playbackSettings.touchControlsEnabled = isChecked;
 						reInitializePlayer();
-						break;
-					case "autoRotate":
-						state.player_settings.autoRotate = isChecked;
-						break;
-					case "showVideoTitles":
-						state.uiSettings.showOverlays = isChecked;
-						updateOverlayDisplay(isChecked);
-						break;
-					case "videoListCoversScreen":
-						state.uiSettings.videoListCoversScreen = isChecked;
-						renderVideoList();
 						break;
 					default:
 						state.player_settings.controlBarChildrenState[key] = isChecked;
@@ -1116,11 +904,6 @@ document.addEventListener("DOMContentLoaded", async () => {
 		});
 	});
 
-	// sleepTimerOptions.addEventListener("change", () => {
-	// 	const selectedValue = sleepTimerOptions.value;
-	// 	state.player_settings.sleepTimerDuration = selectedValue < 1 ? parseFloat(selectedValue) : parseInt(selectedValue);
-	// 	saveState();
-	// });
 
 	videoCountSelector.value = state.videoCount;
 	const currentProfile = state.profiles.find(p => p.id === state.currentProfileId);
@@ -1710,11 +1493,7 @@ function renderSourceSelectors() {
 				videoPlaybackInPreviewMode = true;
 				const playerContainer = document.getElementById('vp');
 				const videoUrl = video.src;
-				console.log(videoUrl)
-
-				console.log(video)
 				vp.src({ src: videoUrl, type: 'video/mp4' });
-				vp.isLandscapeVideo = video.isLandscapeVideo;
 				// 1. Show player
 				openFullscreen(vp, playerContainer);
 				state.currentlyPlayingVideoId = video.id;
@@ -1835,14 +1614,12 @@ function renderSourceSelectors() {
 					videoLabel.style.cursor = "";
 
 					// Also re-enable poster upload input and fade it out
-					posterUploadInput.disabled = true;
-					posterLabel.style.pointerEvents = "none";
-					posterLabel.style.opacity = "0.5";
-					posterLabel.style.cursor = "not-allowed";
-
+					posterUploadInput.disabled = false;
+					posterLabel.style.pointerEvents = "";
+					posterLabel.style.opacity = "";
+					posterLabel.style.cursor = "";
 					videoIndicator.style.backgroundImage = "";
 					clearRowBtn.textContent = "Sil";
-					rowContainer.removeChild(videoTitleAndPlayButtonContainer);
 					return;
 				}
 			}
@@ -2005,13 +1782,6 @@ function renderSourceSelectors() {
 			video.src = URL.createObjectURL(videoFile);
 			video.storedFileName = videoFile.name;
 			video.displayTitle = videoFile.name;
-			/////////////
-			
-			video.width = shouldUpload.width;
-			video.height = shouldUpload.height;
-			video.isLandscapeVideo = shouldUpload.width > shouldUpload.height;
-			
-			/////////////
 			video.size = (fileSizeGB < 1) ? `${fileSizeMB.toFixed(2)} MiB` : `${fileSizeGB.toFixed(2)} GiB`;
 			if (thumbnailFile) {
 				video.poster = URL.createObjectURL(thumbnailFile);
@@ -2146,9 +1916,6 @@ function renderSourceSelectors() {
 				}
 				video.storedFileName = "";
 				video.displayTitle = "";
-				video.width = 0;
-				video.height = 0;
-				video.isLandscapeVideo = false;
 				video.src = "";
 				video.poster = "";
 				video.posterTitle = "";
@@ -2275,7 +2042,6 @@ function renderSourceSelectors() {
 			const playerContainer = document.getElementById('vp');
 			const videoUrl = video.src;
 			vp.src({ src: videoUrl, type: 'video/mp4' });
-			vp.isLandscapeVideo = video.isLandscapeVideo;
 			// 1. Show player
 			openFullscreen(vp, playerContainer);
 			state.currentlyPlayingVideoId = video.id;
@@ -2553,9 +2319,7 @@ async function renderVideoList() {
 			}
 			const playerContainer = document.getElementById('vp');
 			const videoUrl = video.src;
-			
 			vp.src({ src: videoUrl, type: 'video/mp4' });
-			vp.isLandscapeVideo = video.isLandscapeVideo;
 			// 1. Show player
 			openFullscreen(vp, playerContainer);
 			state.currentlyPlayingVideoId = video.id;
@@ -2819,35 +2583,13 @@ function initSettingsPanelInputs() {
 					? checkbox.checked = true
 					: checkbox.checked = false;
 				break;
-			case "time":
-				(state.player_settings.controlBarChildrenState.duration &&
-					state.player_settings.controlBarChildrenState.timeDivider &&
-					state.player_settings.controlBarChildrenState.time)
-					? checkbox.checked = true
-					: checkbox.checked = false;
-				break;
-			case "sleepTimer":
-				state.player_settings.showSleepTimer
-					? checkbox.checked = true
-					: checkbox.checked = false;
-				break;
-			case "rememberVideoTime":
-				state.player_settings.playbackSettings.rememberVideoTime
-					? checkbox.checked = true
-					: checkbox.checked = false;
-				break;
 			case "rememberVolumeLevel":
 				state.player_settings.playbackSettings.rememberVolumeLevel
 					? checkbox.checked = true
 					: checkbox.checked = false;
 				break;
-			case "touchControlsEnabled":
-				state.player_settings.playbackSettings.touchControlsEnabled
-					? checkbox.checked = true
-					: checkbox.checked = false;
-				break;
-			case "autoRotate":
-				state.player_settings.autoRotate
+			case "rememberVideoTime":
+				state.player_settings.playbackSettings.rememberVideoTime
 					? checkbox.checked = true
 					: checkbox.checked = false;
 				break;
@@ -2863,6 +2605,18 @@ function initSettingsPanelInputs() {
 				break;
 			case "userTheme":
 				(localStorage.getItem("userTheme") || getSystemTheme()) === "light"
+					? checkbox.checked = true
+					: checkbox.checked = false;
+				break;
+			case "time":
+				(state.player_settings.controlBarChildrenState.duration &&
+					state.player_settings.controlBarChildrenState.timeDivider &&
+					state.player_settings.controlBarChildrenState.time)
+					? checkbox.checked = true
+					: checkbox.checked = false;
+				break;
+			case "touchControlsEnabled":
+				state.player_settings.playbackSettings.touchControlsEnabled
 					? checkbox.checked = true
 					: checkbox.checked = false;
 				break;
@@ -2936,12 +2690,9 @@ function reInitializePlayer() {
 		},
 	});
 
-	vp.addChild('SleepTimerDisplay');
-
-	const sleepTimerDisplay = vp.getChild('SleepTimerDisplay');
-	if (!state.player_settings.showSleepTimer) {
-		sleepTimerDisplay.hide();
-	}
+	vp.on('loadedmetadata', applyVideoControlBarState);
+	vp.on('componentresize', applyVideoControlBarState);
+	vp.on('loadstart', applyVideoControlBarState);
 
 	vp.mobileUi({
 		fullscreen: {
@@ -2959,11 +2710,6 @@ function reInitializePlayer() {
 		},
 		forceForTesting: true,
 	});
-
-	vp.on('loadedmetadata', applyVideoControlBarState);
-	vp.on('componentresize', applyVideoControlBarState);
-	vp.on('loadstart', applyVideoControlBarState);
-
 	vp.on("volumechange", () => {
 		state.currentVolume = vp.volume();
 		localStorage.setItem("currentVolume", state.currentVolume);
@@ -3075,7 +2821,6 @@ function applyUiSettings() {
 /* View in fullscreen */
 async function openFullscreen(player, playerContainer) {
 	const currentProfile = state.profiles.find(p => p.id === state.currentProfileId);
-	const sleepTimerDisplay = vp.getChild('SleepTimerDisplay');
 	try {
 		if (player.requestFullscreen) {
 			await player.requestFullscreen({ navigationUI: 'hide' }).then(() => {
@@ -3138,7 +2883,7 @@ async function openFullscreen(player, playerContainer) {
 			player.play();
 		}
 	} catch (err) {
-		console.error("Error attempting to enable fullscreen mode: ", err);
+		console.error("Error attempting to enabl fullscreen mode: ", err);
 		showNotificationModalDialog("Dikkat", "Tam ekran modunu etkinleştirirken bir hata oluştu. Lütfen tekrar deneyin.", "Tamam");
 	}
 
@@ -3150,20 +2895,16 @@ async function openFullscreen(player, playerContainer) {
 		vp.currentTime(0);
 		currentProfile.videos[state.currentlyPlayingVideoId].currentTime = 0;
 		playerContainer.dataset.videoId = "";
+		saveState();
 		playerContainer.style.display = 'none';
-		
+
 		// URL.revokeObjectURL(vp.src());
 		document.removeEventListener('fullscreenchange', onFullscreenChange);
-		
+
 		if (videoPlaybackInPreviewMode) {
 			settingsPanelContainer.showModal();
 			videoPlaybackInPreviewMode = false;
 		}
-		screen.orientation.unlock();
-		// sleepTimerTimeoutId && cancelSleepTimer(sleepTimerTimeoutId, sleepTimerIntervalId);
-		cancelSleepTimer2(sleepTimerDisplay);
-		state.player_settings.sleepTimerDuration = 0;
-		saveState();
 	};
 
 	// When video exits before ending, hide the player again but don't reset time
@@ -3176,6 +2917,7 @@ async function openFullscreen(player, playerContainer) {
 		}
 		state.currentlyPlayingVideoId = null;
 		playerContainer.dataset.videoId = "";
+		saveState();
 
 		playerContainer.style.display = 'none';
 
@@ -3184,34 +2926,11 @@ async function openFullscreen(player, playerContainer) {
 			settingsPanelContainer.showModal();
 			videoPlaybackInPreviewMode = false;
 		}
-		screen.orientation.unlock();
-		// sleepTimerTimeoutId && cancelSleepTimer(sleepTimerTimeoutId, sleepTimerIntervalId);
-		cancelSleepTimer2(sleepTimerDisplay);
-		state.player_settings.sleepTimerDuration = 0;
-		saveState();
 	};
 
 	function onFullscreenChange() {
 		if (!document.fullscreenElement) {
 			cleanup();
-		} else {
-			if (state.player_settings.autoRotate) {
-				if (vp.isLandscapeVideo) {
-					console.log("Locking screen orientation to landscape for video playback.");
-					screen.orientation.lock('landscape').catch(err => {
-						console.warn("Screen orientation lock failed: ", err);
-					});
-				} else {
-					console.log("Locking screen orientation to portrait for video playback.");
-
-					screen.orientation.lock('portrait').catch(err => {
-						console.warn("Screen orientation lock failed: ", err);
-					});
-				}
-				// screen.orientation.lock(video.isLandscapeVideo ? 'landscape' : 'portrait').catch(err => {
-				// 	console.warn("Screen orientation lock failed: ", err);
-				// });
-			}
 		}
 	}
 
