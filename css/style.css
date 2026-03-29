@@ -36,6 +36,10 @@ html {
 	--button-border: rgba(255, 255, 255, 0.65);
 	--button-box-shadow: 1px 2px 8px rgba(255, 255, 255, 0.8),
 						 -1px -2px 8px rgba(255, 255, 255, 0.8);
+	--modal-bg: rgba(245, 245, 245, 0.9);
+	--modal-backdrop-bg: rgba(0, 0, 0, 0.3);
+	--modal-color: #222;
+	--modal-border: #e5e4e4;
 }
 
 /* Dark theme */
@@ -57,6 +61,10 @@ html {
 	--button-border: rgba(0, 0, 0, 0.65);
 	--button-box-shadow: 1px 2px 8px rgba(0, 0, 0, 0.8),
 						 -1px -2px 8px rgba(0, 0, 0, 0.8);
+	--modal-bg: #222;
+	--modal-backdrop-bg: rgba(0, 0, 0, 0.7);
+	--modal-color: #d5d5d5;
+	--modal-border: #302f2f;
 }
 
 body {
@@ -763,7 +771,7 @@ video {
 	gap: 5px;
 	background-color: rgb(43 51 63 / .7);
 	color: white;
-	padding: 5px 10px;
+	padding: 6px 10px;
 	border-radius: 16px;
 	font-family: 'monospace';
 	font-size: 0.9rem;
@@ -773,7 +781,7 @@ video {
 }
 
 #sleep-timer-set-countdown-container {
-	font-size: 1.2rem;
+	font-size: 0.9rem;
 }
 
 /* Style for your sleep timer component */
@@ -827,13 +835,16 @@ select::picker(select) {
 .notification-modal-overlay-dialog::backdrop,
 .set-timer-modal-overlay-dialog::backdrop {
 	/* background: rgba(49, 49, 50, 0.706); */
-	background: rgba(0, 0, 0, 0.7);
+	/* background: rgba(0, 0, 0, 0.7); */
+	background: var(--modal-backdrop-bg);
 }
 
+/* edit for dark-light theme */
 .confirm-modal-overlay-dialog,
 .notification-modal-overlay-dialog,
 .set-timer-modal-overlay-dialog {
-	background: rgba(0, 0, 0, 0.7);
+	/* background: rgba(0, 0, 0, 0.7); */
+	background: var(--modal-bg);
 	/* display: flex; */
 	justify-content: center;
 	border: none;
@@ -843,13 +854,15 @@ select::picker(select) {
 	padding: 0;
 	overflow: auto;
 	width: min(500px, 95%);
+	color: var(--modal-color);
 }
 
 .confirm-modal-card-dialog,
 .notification-modal-card-dialog,
 .set-timer-modal-card-dialog {
-	background: #1e1e1e;
-	border: 1px solid #444;
+	/* background: #1e1e1e; */
+	background: var(--modal-bg);
+	border: 1px solid var(--modal-border);
 	border-radius: 0.5rem;
 	box-shadow: 0 10px 40px rgba(0, 0, 0, 0.9);
 	max-width: 500px;
@@ -865,12 +878,12 @@ select::picker(select) {
 .notification-modal-header-dialog,
 .set-timer-modal-header-dialog {
 	padding: 1rem;
-	border-bottom: 1px solid #444;
+	border-bottom: 1px solid var(--modal-border);
 	flex-shrink: 0;
 }
 
 .set-timer-modal-header-dialog {
-	border-bottom: .5px solid #302f2f;
+	border-bottom: .5px solid var(--modal-border);
 }
 
 .confirm-modal-header-dialog h3,
@@ -878,14 +891,14 @@ select::picker(select) {
 .set-timer-modal-header-dialog h3 {
 	margin: 0;
 	font-size: 1.2rem;
-	color: #fff;
+	color: var(--modal-color);
 }
 
 .confirm-modal-body-dialog,
 .notification-modal-body-dialog,
 .set-timer-modal-body-dialog {
 	padding: 1.5rem;
-	color: #ddd;
+	color: var(--modal-color);
 	line-height: 1.6;
 	overflow-y: auto;
 	flex: 1;
@@ -894,6 +907,7 @@ select::picker(select) {
 
 .set-timer-modal-body-dialog {
 	padding: 0.2rem 0.6rem;
+	outline: none;
 }
 
 .set-timer-modal-body-dialog .form-check {
@@ -903,7 +917,7 @@ select::picker(select) {
 	gap: 8px; */
 	font-size: 1.2rem;
 	/* justify-content: center; */
-	border: 1px solid #302f2f;
+	border: 1px solid var(--modal-border);
 	border-radius: 8px;
 }
 
@@ -930,7 +944,7 @@ select::picker(select) {
 .notification-modal-footer-dialog,
 .set-timer-modal-footer-dialog {
 	padding: 1rem;
-	border-top: 1px solid #444;
+	border-top: .5px solid var(--modal-border);
 	display: flex;
 	justify-content: flex-end;
 	gap: 0.5rem;
@@ -938,7 +952,7 @@ select::picker(select) {
 }
 
 .set-timer-modal-footer-dialog {
-	border-top: .5px solid #302f2f;
+	border-top: .5px solid var(--modal-border);
 }
 
 .confirm-modal-footer-dialog .btn,

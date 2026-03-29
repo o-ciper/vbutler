@@ -279,6 +279,7 @@ class SleepTimerDisplay extends CountdownDisplay {
 		const hours = Math.floor(remaining / (1000 * 60 * 60));
 		const minutes = Math.floor((remaining % (1000 * 60 * 60)) / (1000 * 60));
 		const seconds = Math.floor((remaining % (1000 * 60)) / 1000);
+		
 		this.updateDisplay(hours, minutes, seconds);
 		if (remaining > 0 && this.countdownIsActive) {
       		this.ref = requestAnimationFrame(tick);
@@ -286,7 +287,7 @@ class SleepTimerDisplay extends CountdownDisplay {
 			// Timer finished
 			cancelAnimationFrame(this.ref);
 			this.countdownIsActive = false;
-			this.updateDisplay("", "", "");
+			this.updateDisplay(0, 0, 0);
 			// ... handle timer end (pause video, etc.)
 			vp.pause();
 			return;
@@ -303,9 +304,26 @@ class SleepTimerDisplay extends CountdownDisplay {
   
   updateDisplay(hours, minutes, seconds) {
 	if (this.countdownIsActive) {
-		hours && (this.hoursSpan.textContent = hours.toString().padStart(2, '0') + ":");
-		minutes && (this.minutesSpan.textContent = minutes.toString().padStart(2, '0') + ":");
-		this.secondsSpan.textContent = seconds.toString().padStart(2, '0');
+		if (hours === 0 && minutes === 0 && seconds === 0) {
+			this.hoursSpan.textContent = "";
+			this.minutesSpan.textContent = "";
+			this.secondsSpan.textContent = "";
+		} else if (hours === 0 && minutes === 0) {
+			this.hoursSpan.textContent = "";
+			this.minutesSpan.textContent = "";
+			this.secondsSpan.textContent = seconds.toString().padStart(2, '0');
+		} else if (hours === 0) {
+			this.hoursSpan.textContent = "";
+			this.minutesSpan.textContent = minutes.toString().padStart(2, '0') + ":";
+			this.secondsSpan.textContent = seconds.toString().padStart(2, '0');
+		} else {
+			this.hoursSpan.textContent = hours.toString().padStart(2, '0') + ":";
+			this.minutesSpan.textContent = minutes.toString().padStart(2, '0') + ":";
+			this.secondsSpan.textContent = seconds.toString().padStart(2, '0');
+		}
+		// hours && (this.hoursSpan.textContent = hours.toString().padStart(2, '0') + ":");
+		// minutes && (this.minutesSpan.textContent = minutes.toString().padStart(2, '0') + ":");
+		// this.secondsSpan.textContent = seconds.toString().padStart(2, '0');
   	} else {
 		this.hoursSpan.textContent = "";
 		this.minutesSpan.textContent = "";
@@ -3200,12 +3218,12 @@ async function openFullscreen(player, playerContainer) {
 		} else {
 			if (state.player_settings.autoRotate) {
 				if (vp.isLandscapeVideo) {
-					console.log("Locking screen orientation to landscape for video playback.");
+					// console.log("Locking screen orientation to landscape for video playback.");
 					screen.orientation.lock('landscape').catch(err => {
 						console.warn("Screen orientation lock failed: ", err);
 					});
 				} else {
-					console.log("Locking screen orientation to portrait for video playback.");
+					// console.log("Locking screen orientation to portrait for video playback.");
 
 					screen.orientation.lock('portrait').catch(err => {
 						console.warn("Screen orientation lock failed: ", err);

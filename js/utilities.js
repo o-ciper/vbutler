@@ -38,7 +38,6 @@ function showNotificationModalDialog(title, message, okButtonText) {
 		notificationDialog.close();
 		notificationDialogCardFooterOkButton.removeEventListener("click", onOk);
     document.body.removeChild(notificationDialog);
-		console.log("Closed info modal");
 	};
 
     const onOk = () => {
@@ -59,7 +58,6 @@ function showNotificationModalDialog(title, message, okButtonText) {
 async function showSetTimerModalDialog(title, message, okButtonText) {
     const timerTimeList = [
         { label: "Kapalı", value: 0 },
-        { label: "12 saniye", value: 0.2 },
         { label: "5 dakika", value: 5 },
         { label: "10 dakika", value: 10 },
         { label: "15 dakika", value: 15 },
@@ -67,6 +65,7 @@ async function showSetTimerModalDialog(title, message, okButtonText) {
         { label: "30 dakika", value: 30 },
         { label: "45 dakika", value: 45 },
         { label: "1 saat", value: 60 },
+        { label: "1,5 saat", value: 90 },
       ];
     let selectedTime = 0;
     return new Promise((resolve) => {
@@ -113,9 +112,8 @@ async function showSetTimerModalDialog(title, message, okButtonText) {
 
         timerInput.querySelectorAll("input[name='radioDefault']").forEach((input, index) => {
           input.addEventListener("change", () => {
-            selectedTime = timerTimeList[index].value;
+            state.player_settings.sleepTimerDuration = timerTimeList[index].value;
             input.checked = true;
-            console.log("Selected time:", selectedTime);
           });
         });
 
@@ -143,8 +141,7 @@ async function showSetTimerModalDialog(title, message, okButtonText) {
         };
 
         const onOk = () => {
-            const minutes = selectedTime;
-            console.log("Selected sleep timer duration:", minutes);
+            const minutes = state.player_settings.sleepTimerDuration;
             if (isNaN(minutes)) {
                 alert("Lütfen geçerli bir süre girin.");
                 return;
@@ -161,7 +158,6 @@ async function showSetTimerModalDialog(title, message, okButtonText) {
             state.player_settings.sleepTimerDuration = minutes;
             saveState();
             [ sleepTimerTimeoutId, sleepTimerIntervalId ] = startSleepTimer(vp);
-            console.log("Sleep timer started:", sleepTimerTimeoutId, sleepTimerIntervalId);
             cleanup();
             resolve(minutes);
         };
@@ -187,7 +183,6 @@ async function showSetTimerModalDialog(title, message, okButtonText) {
 async function showSetTimerModalDialog2(title, message, okButtonText) {
     const timerTimeList = [
         { label: "Kapalı", value: 0 },
-        { label: "12 saniye", value: 0.2 },
         { label: "5 dakika", value: 5 },
         { label: "10 dakika", value: 10 },
         { label: "15 dakika", value: 15 },
@@ -195,8 +190,9 @@ async function showSetTimerModalDialog2(title, message, okButtonText) {
         { label: "30 dakika", value: 30 },
         { label: "45 dakika", value: 45 },
         { label: "1 saat", value: 60 },
+        { label: "1,5 saat", value: 90 },
       ];
-    let selectedTime = 0;
+
     return new Promise((resolve) => {
         const timerDialog = document.createElement("dialog");
         timerDialog.className = "set-timer-modal-overlay-dialog";
@@ -241,9 +237,8 @@ async function showSetTimerModalDialog2(title, message, okButtonText) {
 
         timerInput.querySelectorAll("input[name='radioDefault']").forEach((input, index) => {
           input.addEventListener("change", () => {
-            selectedTime = timerTimeList[index].value;
+            state.player_settings.sleepTimerDuration = timerTimeList[index].value;
             input.checked = true;
-            console.log("Selected time:", selectedTime);
           });
         });
 
@@ -273,8 +268,7 @@ async function showSetTimerModalDialog2(title, message, okButtonText) {
         const timerDisplay = vp.getChild("sleepTimerDisplay");
 
         const onOk = () => {
-            const minutes = selectedTime;
-            console.log("Selected sleep timer duration:", minutes);
+            const minutes = state.player_settings.sleepTimerDuration;
             if (isNaN(minutes)) {
                 alert("Lütfen geçerli bir süre girin.");
                 return;
@@ -290,9 +284,7 @@ async function showSetTimerModalDialog2(title, message, okButtonText) {
             }
             state.player_settings.sleepTimerDuration = minutes;
             saveState();
-            // [ sleepTimerTimeoutId, sleepTimerIntervalId ] = startSleepTimer(vp);
             startSleepTimer2(vp);
-            console.log("Sleep timer started:", sleepTimerTimeoutId, sleepTimerIntervalId);
             cleanup();
             resolve(minutes);
         };
@@ -682,7 +674,6 @@ function startSleepTimer(vp) {
   const startTime = Date.now();
 
   const timerDisplay = vp.getChild('SleepTimerDisplay');
-  console.log("startSleepTimer called, timerDisplay:", timerDisplay);
   let timeOutId = null;
   let intervalId = null;
   if (state.player_settings.sleepTimerDuration > 0) {
@@ -705,15 +696,11 @@ function startSleepTimer(vp) {
       timerDisplay.updateDisplay(hours, minutes, seconds);
     }, 1000);
   }
-  console.log("timeOutId:", timeOutId, "intervalId:", intervalId);
   return [ timeOutId, intervalId ];
 }
 
 function startSleepTimer2(vp) {
   const timerDisplay = vp.getChild('SleepTimerDisplay');
-  console.log("startSleepTimer2 called, timerDisplay:", timerDisplay);
-  let timeOutId = null;
-  let intervalId = null;
   if (state.player_settings.sleepTimerDuration > 0) {
     const durationMs = state.player_settings.sleepTimerDuration * 60 * 1000;
     timerDisplay.countdownIsActive = true;
