@@ -272,10 +272,13 @@ class SleepTimerDisplay extends CountdownDisplay {
 	const tick = (now) => {
 		const elapsed = now - start;
 		const remaining = Math.max(0, duration - elapsed);
-		const totalSeconds = Math.ceil(remaining / 1000);
-		const hours = Math.floor(totalSeconds / 3600);
-		const minutes = Math.floor((totalSeconds % 3600) / 60);
-		const seconds = totalSeconds % 60;
+		// const totalSeconds = Math.ceil(remaining / 1000);
+		// const hours = Math.floor(totalSeconds / 3600);
+		// const minutes = Math.floor((totalSeconds % 3600) / 60);
+		// const seconds = totalSeconds % 60;
+		const hours = Math.floor(remaining / (1000 * 60 * 60));
+		const minutes = Math.floor((remaining % (1000 * 60 * 60)) / (1000 * 60));
+		const seconds = Math.floor((remaining % (1000 * 60)) / 1000);
 		this.updateDisplay(hours, minutes, seconds);
 		if (remaining > 0 && this.countdownIsActive) {
       		this.ref = requestAnimationFrame(tick);
