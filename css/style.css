@@ -359,6 +359,14 @@ video {
 	border: none;
 }
 
+.video-js.vjs-mobile-ui .vjs-touch-overlay {
+	outline: none;
+}
+
+video {
+	outline: none;
+}
+
 /* .video-js .vjs-time-control {
     display: block!important;
 }
