@@ -1100,6 +1100,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 						break;
 					case "sleepTimer":
 						state.player_settings.showSleepTimer = isChecked;
+						const sleepTimerDisplay = vp.getChild('SleepTimerDisplay');
 						if (isChecked) {
 							sleepTimerDisplay.show();
 						} else {
@@ -2960,7 +2961,9 @@ function reInitializePlayer() {
 	vp.addChild('SleepTimerDisplay');
 
 	const sleepTimerDisplay = vp.getChild('SleepTimerDisplay');
-	if (!state.player_settings.showSleepTimer) {
+	if (state.player_settings.showSleepTimer) {
+		sleepTimerDisplay.show();
+	} else {
 		sleepTimerDisplay.hide();
 	}
 
