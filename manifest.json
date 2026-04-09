@@ -14,7 +14,6 @@
   "display": "fullscreen",
   "background_color": "#333",
   "theme_color": "#000",
-  "orientation": "any",
   "scope": ".",
   "icons": [
     {
