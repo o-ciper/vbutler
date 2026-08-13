@@ -188,6 +188,103 @@ const sleepTimerCountDownSeconds = document.getElementById("sleep-timer-countdow
 
 let DEBUGGING = false;
 
+const state = {
+	profiles: localStorage.getItem("profiles") ?
+		JSON.parse(localStorage.getItem("profiles")) :
+		[
+			{
+				id: 0,
+				originalName: "Varsayılan",
+				OPFSName: "Varsayılan",
+				displayName: "Varsayılan",
+				opfsProfileDirectoryHandle: null,
+				videoCount: 1,
+				videos: [
+					{
+						id: 0,
+						originalFileName: "",
+						storedFileName: "",
+						displayTitle: "",
+						width: 0,
+						height: 0,
+						isLandscapeVideo: false,
+						src: "",
+						poster: "",
+						posterTitle: "",
+						alt: "",
+						currentTime: 0,
+						size: 0,
+					}
+				]
+			}
+		],
+	get profileNames() {
+		return this.profiles.map(p => ({ id: p.id, originalName: p.originalName, OPFSName: p.OPFSName, displayName: p.displayName }));
+	},
+	get profileNamesSet() {
+		return new Set(this.profiles.map(p => p.displayName));
+	},
+	currentProfileId: localStorage.getItem("currentProfileId") ?
+		JSON.parse(localStorage.getItem("currentProfileId")) :
+		0,
+	profileIdCounter: localStorage.getItem("profileIdCounter") ?
+		JSON.parse(localStorage.getItem("profileIdCounter")) :
+		1,
+	currentlyPlayingVideoId: null,
+	currentVolume: localStorage.getItem("currentVolume") ?
+		JSON.parse(localStorage.getItem("currentVolume")) :
+		1,
+	player_settings: {
+		THUMBNAIL_GENERATION_TIME: localStorage.getItem("THUMBNAIL_GENERATION_TIME") ?
+			JSON.parse(localStorage.getItem("THUMBNAIL_GENERATION_TIME")) :
+			10,
+		showVideoControls: localStorage.getItem("showVideoControls") ?
+			JSON.parse(localStorage.getItem("showVideoControls")) :
+			true,
+		controlBarChildrenState: localStorage.getItem("controlBarChildrenState") ?
+			JSON.parse(localStorage.getItem("controlBarChildrenState")) :
+			{
+				"play": true,
+				"progress": true,
+				"volume": true,
+				"time": true,
+				"timeDivider": true,
+				"duration": true,
+				// "remaining": false,
+				// "rate": false,
+				// "pip": false,
+				"fullscreen": true,
+			},
+		showSleepTimer: localStorage.getItem("showSleepTimer") ?
+			JSON.parse(localStorage.getItem("showSleepTimer")) :
+			false,
+		showVideoTitle: localStorage.getItem("showVideoTitle") ?
+			JSON.parse(localStorage.getItem("showVideoTitle")) :
+			true,
+		playbackSettings: localStorage.getItem("playbackSettings") ?
+			JSON.parse(localStorage.getItem("playbackSettings")) :
+			{
+				rememberVolumeLevel: true,
+				rememberVideoTime: true,
+				touchControlsEnabled: true,
+			},
+		autoRotate: localStorage.getItem("autoRotate") ?
+			JSON.parse(localStorage.getItem("autoRotate")) :
+			true,
+		sleepTimerDuration: localStorage.getItem("sleepTimerDuration") ?
+			JSON.parse(localStorage.getItem("sleepTimerDuration")) :
+			0,
+	},
+	uiSettings: {
+		showOverlays: localStorage.getItem("showOverlays") ?
+			JSON.parse(localStorage.getItem("showOverlays")) :
+			true,
+		videoListCoversScreen: localStorage.getItem("videoListCoversScreen") ?
+			JSON.parse(localStorage.getItem("videoListCoversScreen")) :
+			true,
+	}
+}
+
 // OPFS operation queue counter to prevent rerendering source selectors and video list until all queued operations are finished. This is needed because OPFS operations are async and we don't want to trigger multiple renders while there are still pending operations that will update the state. When an OPFS operation is started, rendering the source selectors cause an interruption of the ongoing OPFS operations. This is likely due to the fact that rendering source selectors involves updating the DOM, which can cause the browser to prioritize user interactions and rendering over ongoing async operations. By using a counter to track the number of queued OPFS operations, we can ensure that we only trigger a render after all operations have completed, preventing any potential interruptions and ensuring a smoother user experience.
 let queuedOPFSOperationsCount = 0;
 let notificationOperations
@@ -205,6 +302,7 @@ const OPFSDiskUsage = document.getElementById("opfs-disk-usage");
 let sleepTimerTimeoutId = null;
 let sleepTimerIntervalId = null;
 const CountdownDisplay = videojs.getComponent('Component');
+const VideoTitleDisplayComponent = videojs.getComponent('Component');
 
 class SleepTimerDisplay extends CountdownDisplay {
   constructor(player, options) {
@@ -332,8 +430,23 @@ class SleepTimerDisplay extends CountdownDisplay {
   }
 }
 
+class VideoTitleDisplay extends VideoTitleDisplayComponent {
+	  constructor(player, options) {
+		super(player, options);
+		this.container = document.createElement('div');
+		this.container.id = 'video-title-container';
+		// this.titleSpan = document.createElement('span');
+		// this.titleSpan.id = 'video-title-span';
+		// this.titleSpan.innerHTML = state.profiles.find(p => p.id === state.currentProfileId).videos.find(v => v.id === state.currentlyPlayingVideoId)?.displayTitle || '';
+		// this.container.appendChild(this.titleSpan);
+		this.container.classList.add('vjs-video-title-display');
+		this.el().appendChild(this.container);
+	  }
+}
+
 // Register the component
 videojs.registerComponent('SleepTimerDisplay', SleepTimerDisplay);
+videojs.registerComponent('VideoTitleDisplay', VideoTitleDisplay);
 
 let vp; // Video.js player instance
 let isLandscapeVideo = false;
@@ -365,100 +478,6 @@ let clickCount = 0;
 const clickCountUpperLimit = 1;
 let intervalId;
 let videoPlaybackInPreviewMode = false;
-
-const state = {
-	profiles: localStorage.getItem("profiles") ?
-		JSON.parse(localStorage.getItem("profiles")) :
-		[
-			{
-				id: 0,
-				originalName: "Varsayılan",
-				OPFSName: "Varsayılan",
-				displayName: "Varsayılan",
-				opfsProfileDirectoryHandle: null,
-				videoCount: 1,
-				videos: [
-					{
-						id: 0,
-						originalFileName: "",
-						storedFileName: "",
-						displayTitle: "",
-						width: 0,
-						height: 0,
-						isLandscapeVideo: false,
-						src: "",
-						poster: "",
-						posterTitle: "",
-						alt: "",
-						currentTime: 0,
-						size: 0,
-					}
-				]
-			}
-		],
-	get profileNames() {
-		return this.profiles.map(p => ({ id: p.id, originalName: p.originalName, OPFSName: p.OPFSName, displayName: p.displayName }));
-	},
-	get profileNamesSet() {
-		return new Set(this.profiles.map(p => p.displayName));
-	},
-	currentProfileId: localStorage.getItem("currentProfileId") ?
-		JSON.parse(localStorage.getItem("currentProfileId")) :
-		0,
-	profileIdCounter: localStorage.getItem("profileIdCounter") ?
-		JSON.parse(localStorage.getItem("profileIdCounter")) :
-		1,
-	currentlyPlayingVideoId: null,
-	currentVolume: localStorage.getItem("currentVolume") ?
-		JSON.parse(localStorage.getItem("currentVolume")) :
-		1,
-	player_settings: {
-		THUMBNAIL_GENERATION_TIME: localStorage.getItem("THUMBNAIL_GENERATION_TIME") ?
-			JSON.parse(localStorage.getItem("THUMBNAIL_GENERATION_TIME")) :
-			10,
-		showVideoControls: localStorage.getItem("showVideoControls") ?
-			JSON.parse(localStorage.getItem("showVideoControls")) :
-			true,
-		controlBarChildrenState: localStorage.getItem("controlBarChildrenState") ?
-			JSON.parse(localStorage.getItem("controlBarChildrenState")) :
-			{
-				"play": true,
-				"progress": true,
-				"volume": true,
-				"time": true,
-				"timeDivider": true,
-				"duration": true,
-				// "remaining": false,
-				// "rate": false,
-				// "pip": false,
-				"fullscreen": true,
-			},
-		showSleepTimer: localStorage.getItem("showSleepTimer") ?
-			JSON.parse(localStorage.getItem("showSleepTimer")) :
-			false,
-		playbackSettings: localStorage.getItem("playbackSettings") ?
-			JSON.parse(localStorage.getItem("playbackSettings")) :
-			{
-				rememberVolumeLevel: true,
-				rememberVideoTime: true,
-				touchControlsEnabled: true,
-			},
-		autoRotate: localStorage.getItem("autoRotate") ?
-			JSON.parse(localStorage.getItem("autoRotate")) :
-			true,
-		sleepTimerDuration: localStorage.getItem("sleepTimerDuration") ?
-			JSON.parse(localStorage.getItem("sleepTimerDuration")) :
-			0,
-	},
-	uiSettings: {
-		showOverlays: localStorage.getItem("showOverlays") ?
-			JSON.parse(localStorage.getItem("showOverlays")) :
-			true,
-		videoListCoversScreen: localStorage.getItem("videoListCoversScreen") ?
-			JSON.parse(localStorage.getItem("videoListCoversScreen")) :
-			true,
-	}
-}
 
 /* Check for File System Access API */
 const supportsFS = 'showOpenFilePicker' in window;
@@ -583,6 +602,7 @@ function saveState() {
 	localStorage.setItem("showVideoControls", JSON.stringify(state.player_settings.showVideoControls));
 	localStorage.setItem("controlBarChildrenState", JSON.stringify(state.player_settings.controlBarChildrenState));
 	localStorage.setItem("showSleepTimer", JSON.stringify(state.player_settings.showSleepTimer));
+	localStorage.setItem("showVideoTitle", JSON.stringify(state.player_settings.showVideoTitle));
 	localStorage.setItem("playbackSettings", JSON.stringify(state.player_settings.playbackSettings));
 	localStorage.setItem("autoRotate", JSON.stringify(state.player_settings.autoRotate));
 	localStorage.setItem("showOverlays", JSON.stringify(state.uiSettings.showOverlays));
@@ -951,6 +971,8 @@ document.addEventListener("DOMContentLoaded", async () => {
 	});
 
 	vp.addChild('SleepTimerDisplay');
+
+	vp.addChild('VideoTitleDisplay');
 	
 	vp.mobileUi({
 		fullscreen: {
@@ -1056,10 +1078,15 @@ document.addEventListener("DOMContentLoaded", async () => {
 	});
 
 	const controlBar = vp.getChild('ControlBar');
-	const sleepTimerDisplay = vp.getChild('SleepTimerDisplay');
+	const sleepTimerDisplay = vp.getChild('SleepTimerDisplay')
+	const videoTitleDisplay = vp.getChild('VideoTitleDisplay');
 
 	if (!state.player_settings.showSleepTimer) {
 		sleepTimerDisplay.hide();
+	}
+
+	if (!state.player_settings.showVideoTitle) {
+		videoTitleDisplay.hide();
 	}
 
 	const controls = {
@@ -1105,6 +1132,17 @@ document.addEventListener("DOMContentLoaded", async () => {
 							sleepTimerDisplay.show();
 						} else {
 							sleepTimerDisplay.hide();
+						}
+						break;
+					case "showVideoTitle":
+						state.player_settings.showVideoTitle = isChecked;
+						const videoTitleDisplay = vp.getChild('VideoTitleDisplay');
+						if (isChecked) {
+							console.log("showVideoTitle is checked, showing video title display");
+							videoTitleDisplay.show();
+						} else {
+							console.log("showVideoTitle is unchecked, hiding video title display");
+							videoTitleDisplay.hide();
 						}
 						break;
 					case "rememberVideoTime":
@@ -2853,6 +2891,12 @@ function initSettingsPanelInputs() {
 					? checkbox.checked = true
 					: checkbox.checked = false;
 				break;
+			case "showVideoTitle":
+				state.player_settings.showVideoTitle
+					? checkbox.checked = true
+					: checkbox.checked = false;
+				break;
+
 			case "rememberVideoTime":
 				state.player_settings.playbackSettings.rememberVideoTime
 					? checkbox.checked = true
@@ -3100,6 +3144,7 @@ function applyUiSettings() {
 async function openFullscreen(player, playerContainer) {
 	const currentProfile = state.profiles.find(p => p.id === state.currentProfileId);
 	const sleepTimerDisplay = vp.getChild('SleepTimerDisplay');
+	const videoTitleDisplay = vp.getChild('VideoTitleDisplay');
 	try {
 		if (player.requestFullscreen) {
 			await player.requestFullscreen({ navigationUI: 'hide' }).then(() => {
@@ -3110,6 +3155,14 @@ async function openFullscreen(player, playerContainer) {
 					player.volume(state.player_settings.playbackSettings.rememberVolumeLevel ? state.currentVolume : 0.8);
 					playerContainer.style.display = 'block';
 					player.play();
+					if (state.player_settings.showVideoTitle) {
+						// XXX
+						console.log(videoTitleDisplay.container);
+						videoTitleDisplay.container.textContent = currentProfile.videos[state.currentlyPlayingVideoId].displayTitle || "";
+						videoTitleDisplay.show();
+					} else {
+						videoTitleDisplay.hide();
+					}
 				} else {
 					console.error("Fullscreen request was successful but document.fullscreenElement is not set.");
 					showNotificationModalDialog("Dikkat", "Tam ekran moduna geçildi ancak beklenmedik bir hata oluştu. Lütfen tekrar deneyin.", "Tamam");
