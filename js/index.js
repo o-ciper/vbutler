@@ -177,7 +177,8 @@ const addProfileSection = document.querySelector(".add-profile-section");
 const profileNameInput = document.getElementById("profile-name-input");
 const removeProfileBtn = document.getElementById("remove-profile-btn");
 const removeAllProfilesBtn = document.getElementById("remove-all-profiles-btn");
-const videoCountValues = [1, 2, 4];
+// const videoCountValues = [1, 2, 4];
+const videoCountValues = [1, 2, 4, 8, 16];
 const settingsCheckBoxes = document.querySelectorAll("#settings-panel-container input[type='checkbox']");
 const removeAllFilesBtn = document.querySelector(".delete-all-btn");
 const storageSettingsSection = document.getElementById("storage-settings-section");
@@ -260,7 +261,7 @@ const state = {
 			false,
 		showVideoTitle: localStorage.getItem("showVideoTitle") ?
 			JSON.parse(localStorage.getItem("showVideoTitle")) :
-			true,
+			false,
 		playbackSettings: localStorage.getItem("playbackSettings") ?
 			JSON.parse(localStorage.getItem("playbackSettings")) :
 			{
