@@ -3003,13 +3003,21 @@ function reInitializePlayer() {
 	});
 
 	vp.addChild('SleepTimerDisplay');
-
 	const sleepTimerDisplay = vp.getChild('SleepTimerDisplay');
 	if (state.player_settings.showSleepTimer) {
 		sleepTimerDisplay.show();
 	} else {
 		sleepTimerDisplay.hide();
 	}
+
+	vp.addChild('VideoTitleDisplay');
+	const videoTitleDisplay = vp.getChild('VideoTitleDisplay');
+	if (state.player_settings.showVideoTitle) {
+		videoTitleDisplay.show();
+	} else {
+		videoTitleDisplay.hide();
+	}
+	
 
 	vp.mobileUi({
 		fullscreen: {
