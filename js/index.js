@@ -2742,6 +2742,24 @@ function fitThumbnailsInViewport(videoCount) {
 				videoListGrid.style.columnGap = `8px`;
 			}
 			break;
+		case 8:
+			if (isPortrait) {
+				cols = 2;
+				rows = 4;
+			} else {
+				cols = 4;
+				rows = 2;
+			}
+			break;
+		case 16:
+			if (isPortrait) {
+				cols = 2;
+				rows = 8;
+			} else {
+				cols = 4;
+				rows = 4;
+			}
+			break;
 		default:
 			cols = videoCount;
 			rows = 1;

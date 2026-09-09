@@ -201,6 +201,16 @@ main {
   grid-template-rows: repeat(4, 1fr);
 }
 
+.video-list-grid.count-8 {
+  grid-template-columns: repeat(2, 1fr);
+  grid-template-rows: repeat(4, 1fr);
+}
+
+.video-list-grid.count-16 {
+  grid-template-columns: repeat(4, 1fr);
+  grid-template-rows: repeat(4, 1fr);
+}
+
 /* Ensure 16:9 fits nicely even on landscape displays */
 @media (orientation: landscape) {
 	.video-list-grid.count-1 {
@@ -215,6 +225,16 @@ main {
 	.video-list-grid.count-4 {
 		grid-template-columns: repeat(2, 1fr);	
 		grid-template-rows: repeat(2, 1fr);
+	}
+
+	.video-list-grid.count-8 {
+		grid-template-columns: repeat(4, 1fr);
+		grid-template-rows: repeat(2, 1fr);
+	}
+
+	.video-list-grid.count-16 {
+		grid-template-columns: repeat(4, 1fr);
+		grid-template-rows: repeat(4, 1fr);
 	}
 
 	/* Layout patterns for count */
@@ -1049,6 +1069,16 @@ select::picker(select) {
 	}
 	#video-title-container {
 		max-width: 85%;
+	}
+
+	.video-list-grid.count-8 {
+		grid-template-columns: repeat(2, 1fr);
+		grid-template-rows: repeat(4, 1fr);
+	}
+
+	.video-list-grid.count-16 {
+		grid-template-columns: repeat(4, 1fr);
+		grid-template-rows: repeat(4, 1fr);
 	}
 }
 
