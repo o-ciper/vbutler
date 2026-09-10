@@ -743,8 +743,8 @@ video {
 
 .close-settings-btn {
 	position: absolute;
-	top: 6px;
-	right: 8px;
+	top: 8px;
+	right: 12px;
 	margin-left: 18px;
 	z-index: 101;
 }
@@ -1111,7 +1111,6 @@ select::picker(select) {
 		/* background: #201e1e; */
 		/* background: var(--panel); */
 		flex-shrink: 0;
-		padding-top: var(--settings-tab-btns-padding-top);
 	}
 
 	#profile-settings-panel-tab-btn,
@@ -1183,8 +1182,8 @@ select::picker(select) {
 
 @media only screen and (max-width: 720px) and (orientation: landscape) {
 	#settings-panel-close-settings-btn {
-		right: 1rem;
-		top: .6rem;
+		right: 1.2rem;
+		top: 0.6rem;
 	}
 	#settingsTab {
 		padding-top: .3rem;
@@ -1201,6 +1200,7 @@ select::picker(select) {
 @media only screen and (min-width: 600px) {
 	.settings-panel {
 		padding: 6px 4px 1.5rem;
+		padding-right: 8px;
 	}
 
 	#profile-settings-panel fieldset,
@@ -1215,6 +1215,21 @@ select::picker(select) {
 		font-size: max(.92rem, 1cqw, 2cqh);
 	}
 	
+}
+
+@media only screen and (min-width: 600px) and (orientation: landscape) {
+	#settings-panel-close-settings-btn {
+		right: 22px;
+		top: 12px;
+	}
+	#settingsTab {
+		padding-top: .4rem;
+		padding-left: 1rem;
+	}
+	#settingsTabContent {
+		padding-left: .8rem;
+		padding-right: .3rem;
+	}
 }
 
 /* Medium devices (landscape tablets, 768px and up) */
@@ -1233,6 +1248,11 @@ select::picker(select) {
 @media only screen and (min-width: 992px) {
 	.settings-panel {
 		padding: 12px 16px 16px;
+	}
+
+	#settings-panel-close-settings-btn {
+		right: 28px;
+		top: 12px;
 	}
 
 	#profile-settings-panel fieldset,
