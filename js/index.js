@@ -3184,7 +3184,6 @@ async function openFullscreen(player, playerContainer) {
 					player.play();
 					if (state.player_settings.showVideoTitle) {
 						// XXX
-						console.log(videoTitleDisplay.container);
 						videoTitleDisplay.container.textContent = currentProfile.videos[state.currentlyPlayingVideoId].displayTitle || "";
 						videoTitleDisplay.show();
 					} else {
