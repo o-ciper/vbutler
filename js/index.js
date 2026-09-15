@@ -109,18 +109,18 @@ initTheme();
 // const pb = document.getElementById("pb");
 
 if ('serviceWorker' in navigator) {
-	navigator.serviceWorker.addEventListener('controllerchange', function() {
+	navigator.serviceWorker.addEventListener('controllerchange', function () {
 		showUpdatePrompt();
 	});
 
-	window.addEventListener('load', function() {
-		navigator.serviceWorker.register('service-worker.js').then(function(registration) {
+	window.addEventListener('load', function () {
+		navigator.serviceWorker.register('service-worker.js').then(function (registration) {
 			if (registration.waiting) {
 				showUpdatePrompt();
 			}
-			registration.addEventListener('updatefound', function() {
+			registration.addEventListener('updatefound', function () {
 				const newWorker = registration.installing;
-				newWorker.addEventListener('statechange', function() {
+				newWorker.addEventListener('statechange', function () {
 					if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
 						showUpdatePrompt();
 					}
@@ -146,7 +146,7 @@ function showUpdatePrompt() {
 	prompt.textContent = 'Yeni bir güncelleme mevcut! Yenilemek için tıklayın.';
 	prompt.style.cursor = 'pointer';
 	prompt.style.userSelect = 'none';
-	prompt.onclick = function() {
+	prompt.onclick = function () {
 		if (navigator.serviceWorker.controller) {
 			navigator.serviceWorker.controller.postMessage({ type: 'SKIP_WAITING' });
 		}
@@ -154,6 +154,8 @@ function showUpdatePrompt() {
 	};
 	document.body.appendChild(prompt);
 }
+
+let wakeLockIsSupported = 'wakeLock' in navigator;
 
 const html = document.documentElement;
 const body = document.querySelector("body");
@@ -283,6 +285,9 @@ const state = {
 		videoListCoversScreen: localStorage.getItem("videoListCoversScreen") ?
 			JSON.parse(localStorage.getItem("videoListCoversScreen")) :
 			true,
+		screenWakeLockMode: localStorage.getItem("screenWakeLockMode") ?
+			JSON.parse(localStorage.getItem("screenWakeLockMode")) :
+			false,
 	}
 }
 
@@ -306,133 +311,133 @@ const CountdownDisplay = videojs.getComponent('Component');
 const VideoTitleDisplayComponent = videojs.getComponent('Component');
 
 class SleepTimerDisplay extends CountdownDisplay {
-  constructor(player, options) {
-    super(player, options);
-    
-    this.container = document.createElement('div');
-    this.container.id = 'sleep-timer-container';
+	constructor(player, options) {
+		super(player, options);
 
-	this.setCountDownContainer = document.createElement('div');
-	this.setCountDownContainer.id = 'sleep-timer-set-countdown-container';
-	this.setCountDownContainer.innerHTML = '<i class="bi bi-stopwatch"></i>';
+		this.container = document.createElement('div');
+		this.container.id = 'sleep-timer-container';
 
-	this.timerContainer = document.createElement('div');
-	this.timerContainer.id = "sleep-timer-countdown-container";
-    
-    this.hoursSpan = document.createElement('span');
-    this.hoursSpan.id = 'sleep-timer-countdown-hours';
-    this.minutesSpan = document.createElement('span');
-    this.minutesSpan.id = 'sleep-timer-countdown-minutes';
-    this.secondsSpan = document.createElement('span');
-    this.secondsSpan.id = 'sleep-timer-countdown-seconds';
-    
-    this.timerContainer.appendChild(this.hoursSpan);
-    this.timerContainer.appendChild(this.minutesSpan);
-    this.timerContainer.appendChild(this.secondsSpan);
+		this.setCountDownContainer = document.createElement('div');
+		this.setCountDownContainer.id = 'sleep-timer-set-countdown-container';
+		this.setCountDownContainer.innerHTML = '<i class="bi bi-stopwatch"></i>';
 
-	this.container.appendChild(this.setCountDownContainer);
-	this.container.appendChild(this.timerContainer);
-	// Add CSS class for auto-hide
-    this.container.classList.add('vjs-sleep-timer-display');
-    
-    this.el().appendChild(this.container);
+		this.timerContainer = document.createElement('div');
+		this.timerContainer.id = "sleep-timer-countdown-container";
 
-	this.container.addEventListener("click", async () => {
-		try {
-			const minutes = await showSetTimerModalDialog2(
-							"Uyku Zamanlayıcısı",
-							"",
-							"Ayarla");
-			if (minutes !== null) {
-				if (isNaN(minutes) || minutes < 0) {
-					alert("Lütfen geçerli bir süre girin (0 veya pozitif bir sayı).");
-					return;
+		this.hoursSpan = document.createElement('span');
+		this.hoursSpan.id = 'sleep-timer-countdown-hours';
+		this.minutesSpan = document.createElement('span');
+		this.minutesSpan.id = 'sleep-timer-countdown-minutes';
+		this.secondsSpan = document.createElement('span');
+		this.secondsSpan.id = 'sleep-timer-countdown-seconds';
+
+		this.timerContainer.appendChild(this.hoursSpan);
+		this.timerContainer.appendChild(this.minutesSpan);
+		this.timerContainer.appendChild(this.secondsSpan);
+
+		this.container.appendChild(this.setCountDownContainer);
+		this.container.appendChild(this.timerContainer);
+		// Add CSS class for auto-hide
+		this.container.classList.add('vjs-sleep-timer-display');
+
+		this.el().appendChild(this.container);
+
+		this.container.addEventListener("click", async () => {
+			try {
+				const minutes = await showSetTimerModalDialog2(
+					"Uyku Zamanlayıcısı",
+					"",
+					"Ayarla");
+				if (minutes !== null) {
+					if (isNaN(minutes) || minutes < 0) {
+						alert("Lütfen geçerli bir süre girin (0 veya pozitif bir sayı).");
+						return;
+					}
+					state.player_settings.sleepTimerDuration = minutes;
+					saveState();
+					this.countdownIsActive = !isNaN(minutes) && minutes > 0;
 				}
-				state.player_settings.sleepTimerDuration = minutes;
-				saveState();
-				this.countdownIsActive = !isNaN(minutes) && minutes > 0;
+			} catch (err) {
+				console.error("Error setting sleep timer: ", err);
 			}
-		} catch(err) {
-			console.error("Error setting sleep timer: ", err);
-		}
-	});
-  }
-
-  countdownIsActive = false;
-  target = 0;
-  ref = 0;
-  timeoutId = null;
-  intervalId = null;
-
-  countDown() {
-	const start = performance.now();
-	const duration = this.target; // assuming target is in seconds
-
-	const tick = (now) => {
-		const elapsed = now - start;
-		const remaining = Math.max(0, duration - elapsed);
-		// const totalSeconds = Math.ceil(remaining / 1000);
-		// const hours = Math.floor(totalSeconds / 3600);
-		// const minutes = Math.floor((totalSeconds % 3600) / 60);
-		// const seconds = totalSeconds % 60;
-		const hours = Math.floor(remaining / (1000 * 60 * 60));
-		const minutes = Math.floor((remaining % (1000 * 60 * 60)) / (1000 * 60));
-		const seconds = Math.floor((remaining % (1000 * 60)) / 1000);
-		
-		this.updateDisplay(hours, minutes, seconds);
-		if (remaining > 0 && this.countdownIsActive) {
-      		this.ref = requestAnimationFrame(tick);
-		} else {
-			// Timer finished
-			cancelAnimationFrame(this.ref);
-			this.countdownIsActive = false;
-			this.updateDisplay(0, 0, 0);
-			// ... handle timer end (pause video, etc.)
-			vp.pause();
-			return;
-		}
-	};
-	// Cancel any previous countdown
-	if (this.ref) {
-		cancelAnimationFrame(this.ref);
-		this.ref = null;
+		});
 	}
-	this.countdownIsActive = true;
-	this.ref = requestAnimationFrame(tick);
-  }
-  
-  updateDisplay(hours, minutes, seconds) {
-	if (this.countdownIsActive) {
-		if (hours === 0 && minutes === 0 && seconds === 0) {
+
+	countdownIsActive = false;
+	target = 0;
+	ref = 0;
+	timeoutId = null;
+	intervalId = null;
+
+	countDown() {
+		const start = performance.now();
+		const duration = this.target; // assuming target is in seconds
+
+		const tick = (now) => {
+			const elapsed = now - start;
+			const remaining = Math.max(0, duration - elapsed);
+			// const totalSeconds = Math.ceil(remaining / 1000);
+			// const hours = Math.floor(totalSeconds / 3600);
+			// const minutes = Math.floor((totalSeconds % 3600) / 60);
+			// const seconds = totalSeconds % 60;
+			const hours = Math.floor(remaining / (1000 * 60 * 60));
+			const minutes = Math.floor((remaining % (1000 * 60 * 60)) / (1000 * 60));
+			const seconds = Math.floor((remaining % (1000 * 60)) / 1000);
+
+			this.updateDisplay(hours, minutes, seconds);
+			if (remaining > 0 && this.countdownIsActive) {
+				this.ref = requestAnimationFrame(tick);
+			} else {
+				// Timer finished
+				cancelAnimationFrame(this.ref);
+				this.countdownIsActive = false;
+				this.updateDisplay(0, 0, 0);
+				// ... handle timer end (pause video, etc.)
+				vp.pause();
+				return;
+			}
+		};
+		// Cancel any previous countdown
+		if (this.ref) {
+			cancelAnimationFrame(this.ref);
+			this.ref = null;
+		}
+		this.countdownIsActive = true;
+		this.ref = requestAnimationFrame(tick);
+	}
+
+	updateDisplay(hours, minutes, seconds) {
+		if (this.countdownIsActive) {
+			if (hours === 0 && minutes === 0 && seconds === 0) {
+				this.hoursSpan.textContent = "";
+				this.minutesSpan.textContent = "";
+				this.secondsSpan.textContent = "";
+			} else if (hours === 0 && minutes === 0) {
+				this.hoursSpan.textContent = "";
+				this.minutesSpan.textContent = "";
+				this.secondsSpan.textContent = seconds.toString().padStart(2, '0');
+			} else if (hours === 0) {
+				this.hoursSpan.textContent = "";
+				this.minutesSpan.textContent = minutes.toString().padStart(2, '0') + ":";
+				this.secondsSpan.textContent = seconds.toString().padStart(2, '0');
+			} else {
+				this.hoursSpan.textContent = hours.toString().padStart(2, '0') + ":";
+				this.minutesSpan.textContent = minutes.toString().padStart(2, '0') + ":";
+				this.secondsSpan.textContent = seconds.toString().padStart(2, '0');
+			}
+			// hours && (this.hoursSpan.textContent = hours.toString().padStart(2, '0') + ":");
+			// minutes && (this.minutesSpan.textContent = minutes.toString().padStart(2, '0') + ":");
+			// this.secondsSpan.textContent = seconds.toString().padStart(2, '0');
+		} else {
 			this.hoursSpan.textContent = "";
 			this.minutesSpan.textContent = "";
 			this.secondsSpan.textContent = "";
-		} else if (hours === 0 && minutes === 0) {
-			this.hoursSpan.textContent = "";
-			this.minutesSpan.textContent = "";
-			this.secondsSpan.textContent = seconds.toString().padStart(2, '0');
-		} else if (hours === 0) {
-			this.hoursSpan.textContent = "";
-			this.minutesSpan.textContent = minutes.toString().padStart(2, '0') + ":";
-			this.secondsSpan.textContent = seconds.toString().padStart(2, '0');
-		} else {
-			this.hoursSpan.textContent = hours.toString().padStart(2, '0') + ":";
-			this.minutesSpan.textContent = minutes.toString().padStart(2, '0') + ":";
-			this.secondsSpan.textContent = seconds.toString().padStart(2, '0');
 		}
-		// hours && (this.hoursSpan.textContent = hours.toString().padStart(2, '0') + ":");
-		// minutes && (this.minutesSpan.textContent = minutes.toString().padStart(2, '0') + ":");
-		// this.secondsSpan.textContent = seconds.toString().padStart(2, '0');
-  	} else {
-		this.hoursSpan.textContent = "";
-		this.minutesSpan.textContent = "";
-		this.secondsSpan.textContent = "";
 	}
-  }
 }
 
 class VideoTitleDisplay extends VideoTitleDisplayComponent {
-	  constructor(player, options) {
+	constructor(player, options) {
 		super(player, options);
 		this.container = document.createElement('div');
 		this.container.id = 'video-title-container';
@@ -442,7 +447,7 @@ class VideoTitleDisplay extends VideoTitleDisplayComponent {
 		// this.container.appendChild(this.titleSpan);
 		this.container.classList.add('vjs-video-title-display');
 		this.el().appendChild(this.container);
-	  }
+	}
 }
 
 // Register the component
@@ -600,7 +605,7 @@ function saveState() {
 	localStorage.setItem("profileIdCounter", JSON.stringify(state.profileIdCounter));
 	localStorage.setItem("currentVolume", JSON.stringify(state.currentVolume));
 	localStorage.setItem("THUMBNAIL_GENERATION_TIME", JSON.stringify(state.player_settings.THUMBNAIL_GENERATION_TIME)),
-	localStorage.setItem("showVideoControls", JSON.stringify(state.player_settings.showVideoControls));
+		localStorage.setItem("showVideoControls", JSON.stringify(state.player_settings.showVideoControls));
 	localStorage.setItem("controlBarChildrenState", JSON.stringify(state.player_settings.controlBarChildrenState));
 	localStorage.setItem("showSleepTimer", JSON.stringify(state.player_settings.showSleepTimer));
 	localStorage.setItem("showVideoTitle", JSON.stringify(state.player_settings.showVideoTitle));
@@ -609,6 +614,7 @@ function saveState() {
 	localStorage.setItem("showOverlays", JSON.stringify(state.uiSettings.showOverlays));
 	localStorage.setItem("videos", JSON.stringify(state.profiles.find(p => p.id === state.currentProfileId).videos));
 	localStorage.setItem("videoListCoversScreen", JSON.stringify(state.uiSettings.videoListCoversScreen));
+	localStorage.setItem("screenWakeLockMode", JSON.stringify(state.uiSettings.screenWakeLockMode));
 }
 
 showTheButton.addEventListener("click", () => {
@@ -944,6 +950,46 @@ removeAllProfilesBtn.addEventListener("click", async () => {
 	renderVideoList();
 });
 
+
+let wakeLock = null;
+
+async function requestWakeLock() {
+  try {
+    wakeLock = await navigator.wakeLock.request('screen');
+  } catch (err) {
+    console.error('Failed to acquire wake lock:', err);
+    wakeLock = null;
+  }
+}
+
+async function releaseWakeLock() {
+  if (wakeLock !== null) {
+    try {
+      await wakeLock.release();
+    } catch (err) {
+      console.error('Failed to release wake lock:', err);
+    } finally {
+      wakeLock = null;
+    }
+  }
+}
+
+async function handleVisibilityChange() {
+  	if (
+		wakeLock !== null && 
+		document.visibilityState === 'visible' && 
+		state.uiSettings.screenWakeLockMode
+	) {
+		requestWakeLock();
+	} 
+}
+
+if (wakeLockIsSupported && state.uiSettings.screenWakeLockMode) {
+	requestWakeLock();
+}
+
+document.addEventListener('visibilitychange', handleVisibilityChange);
+
 document.addEventListener("DOMContentLoaded", async () => {
 	window.addEventListener('resize', setViewportHeight);
 	window.addEventListener('orientationchange', setViewportHeight);
@@ -974,7 +1020,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 	vp.addChild('SleepTimerDisplay');
 
 	vp.addChild('VideoTitleDisplay');
-	
+
 	vp.mobileUi({
 		fullscreen: {
 			enterOnRotate: true,
@@ -1166,6 +1212,14 @@ document.addEventListener("DOMContentLoaded", async () => {
 					case "videoListCoversScreen":
 						state.uiSettings.videoListCoversScreen = isChecked;
 						renderVideoList();
+						break;
+					case "screenWakeLockMode":
+						state.uiSettings.screenWakeLockMode = isChecked;
+						if (isChecked) {
+							requestWakeLock();
+						} else {
+							releaseWakeLock();
+						}
 						break;
 					default:
 						state.player_settings.controlBarChildrenState[key] = isChecked;
@@ -1670,7 +1724,7 @@ function renderSourceSelectors() {
 
 			const file = input.files ? input.files[0] : null;
 			// Attach progress callback
-			file._onProgress = function(bytesWritten, totalBytes) {
+			file._onProgress = function (bytesWritten, totalBytes) {
 				const percent = ((bytesWritten / totalBytes) * 100).toFixed(1);
 				let writtenMiB = bytesWritten / (1024 * 1024);
 				let totalMiB = totalBytes / (1024 * 1024);
@@ -2067,11 +2121,11 @@ function renderSourceSelectors() {
 			video.storedFileName = videoFile.name;
 			video.displayTitle = videoFile.name;
 			/////////////
-			
+
 			video.width = shouldUpload.width;
 			video.height = shouldUpload.height;
 			video.isLandscapeVideo = shouldUpload.width > shouldUpload.height;
-			
+
 			/////////////
 			video.size = (fileSizeGB < 1) ? `${fileSizeMB.toFixed(2)} MiB` : `${fileSizeGB.toFixed(2)} GiB`;
 			if (thumbnailFile) {
@@ -2614,7 +2668,7 @@ async function renderVideoList() {
 			}
 			const playerContainer = document.getElementById('vp');
 			const videoUrl = video.src;
-			
+
 			vp.src({ src: videoUrl, type: 'video/mp4' });
 			vp.isLandscapeVideo = video.isLandscapeVideo;
 			// 1. Show player
@@ -2946,6 +3000,11 @@ function initSettingsPanelInputs() {
 					? checkbox.checked = true
 					: checkbox.checked = false;
 				break;
+			case "screenWakeLockMode":
+				state.uiSettings.screenWakeLockMode
+					? checkbox.checked = true
+					: checkbox.checked = false;
+				break;
 			case "userTheme":
 				(localStorage.getItem("userTheme") || getSystemTheme()) === "light"
 					? checkbox.checked = true
@@ -3036,7 +3095,7 @@ function reInitializePlayer() {
 	} else {
 		videoTitleDisplay.hide();
 	}
-	
+
 
 	vp.mobileUi({
 		fullscreen: {
@@ -3254,10 +3313,10 @@ async function openFullscreen(player, playerContainer) {
 		currentProfile.videos[state.currentlyPlayingVideoId].currentTime = 0;
 		playerContainer.dataset.videoId = "";
 		playerContainer.style.display = 'none';
-		
+
 		// URL.revokeObjectURL(vp.src());
 		document.removeEventListener('fullscreenchange', onFullscreenChange);
-		
+
 		if (videoPlaybackInPreviewMode) {
 			settingsPanelContainer.showModal();
 			videoPlaybackInPreviewMode = false;
