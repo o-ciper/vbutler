@@ -952,43 +952,66 @@ removeAllProfilesBtn.addEventListener("click", async () => {
 
 
 let wakeLock = null;
+let acquiringWakeLock = false;
 
 async function requestWakeLock() {
-  try {
-    wakeLock = await navigator.wakeLock.request('screen');
-  } catch (err) {
-    console.error('Failed to acquire wake lock:', err);
-    wakeLock = null;
-  }
+	if (acquiringWakeLock || wakeLock !== null) return;
+
+	acquiringWakeLock = true;
+	
+	try {
+		const lock = await navigator.wakeLock.request('screen');
+
+		wakeLock = lock;
+		
+		lock.addEventListener('release', () => {
+			if (wakeLock === lock) {
+				wakeLock = null;
+
+				// Re-acquire if the lock was released unexpectedly
+                // while the user still wants the screen kept awake.
+				syncWakeLock();
+			}
+		});
+	} catch (err) {
+		console.error('Failed to acquire wake lock:', err);
+	} finally {
+		acquiringWakeLock = false;
+	}
 }
 
 async function releaseWakeLock() {
-  if (wakeLock !== null) {
-    try {
-      await wakeLock.release();
-    } catch (err) {
-      console.error('Failed to release wake lock:', err);
-    } finally {
-      wakeLock = null;
+	const lock = wakeLock;
+
+	if (lock === null) return;
+
+	try {
+		await lock.release();
+	} catch (err) {
+		console.error('Failed to release wake lock:', err);
+	} finally {
+		if (wakeLock === lock) {
+			wakeLock = null;
+		}
+	}
+}
+
+async function syncWakeLock() {
+	const shouldKeepScreenAwake =
+        document.visibilityState === 'visible' &&
+        state.uiSettings.screenWakeLockMode &&
+        wakeLock === null;
+
+	if (shouldKeepScreenAwake) {
+		await requestWakeLock();
+	} else {
+        await releaseWakeLock();
     }
-  }
 }
 
-async function handleVisibilityChange() {
-  	if (
-		wakeLock !== null && 
-		document.visibilityState === 'visible' && 
-		state.uiSettings.screenWakeLockMode
-	) {
-		requestWakeLock();
-	} 
-}
+syncWakeLock();
 
-if (wakeLockIsSupported && state.uiSettings.screenWakeLockMode) {
-	requestWakeLock();
-}
-
-document.addEventListener('visibilitychange', handleVisibilityChange);
+document.addEventListener('visibilitychange', () => syncWakeLock());
 
 document.addEventListener("DOMContentLoaded", async () => {
 	window.addEventListener('resize', setViewportHeight);
@@ -1215,11 +1238,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 						break;
 					case "screenWakeLockMode":
 						state.uiSettings.screenWakeLockMode = isChecked;
-						if (isChecked) {
-							requestWakeLock();
-						} else {
-							releaseWakeLock();
-						}
+						syncWakeLock();
 						break;
 					default:
 						state.player_settings.controlBarChildrenState[key] = isChecked;
